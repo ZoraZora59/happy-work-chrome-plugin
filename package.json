@@ -1,7 +1,7 @@
 {
   "name": "happy-work-chrome-plugin",
-  "version": "1.0.0",
-  "description": "打工人加油站 Chrome 插件，展示每日收入和激励信息。",
+  "version": "3.0.0",
+  "description": "打工人加油站 Chrome 插件 - 实时显示工作收入，动态心情系统，渐进式彩虹特效，为打工人提供工作激励！",
   "main": "index.js",
   "scripts": {
     "dev": "webpack --mode development --watch",

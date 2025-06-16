@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const addBreakBtn = document.getElementById('addBreakBtn');
   const saveBtn = document.getElementById('saveBtn');
   const incomeForm = document.getElementById('incomeForm');
+  const zenMode = document.getElementById('zenMode');
 
   // 动态添加/删除休息时间
   function addBreakRow(start = '', end = '') {
@@ -159,6 +160,11 @@ document.addEventListener('DOMContentLoaded', function () {
     
     if (Array.isArray(data.breaks)) {
       data.breaks.forEach(b => addBreakRow(b.start, b.end));
+    }
+    
+    // 加载佛系模式设置
+    if (data.zenMode) {
+      zenMode.checked = data.zenMode;
     }
   });
 
@@ -305,7 +311,10 @@ document.addEventListener('DOMContentLoaded', function () {
       weekendFrequency: weekendOvertimeEnabled.checked ? weekendFrequency.value : null,
       baseWeekStart: (weekendOvertimeEnabled.checked && weekendFrequency.value !== '1') ? baseWeekStart.value : null,
       afterWorkOvertimeEnabled: afterWorkOvertimeEnabled.checked,
-      afterWorkMultiplier: afterWorkOvertimeEnabled.checked ? afterWorkMultiplier.value : null
+      afterWorkMultiplier: afterWorkOvertimeEnabled.checked ? afterWorkMultiplier.value : null,
+      
+      // 保存佛系模式设置
+      zenMode: zenMode.checked
     };
     chrome.storage.sync.set({ incomeSettings: settings }, function () {
       alert('保存成功！');

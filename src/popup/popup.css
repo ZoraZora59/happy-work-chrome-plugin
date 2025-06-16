@@ -17,48 +17,67 @@ body {
 
 h1 {
   color: #3ec6c1;
-  margin: 0 0 8px 0;
-  font-size: 1.6em;
+  margin: 0 0 12px 0;
+  font-size: 1.8em;
   font-weight: bold;
+}
+
+/* 添加标题下方分隔线 */
+h1::after {
+  content: '';
+  display: block;
+  width: 80%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #3ec6c1 50%, transparent 100%);
+  margin: 8px auto 0;
 }
 
 .slogan {
-  color: #888;
+  color: #666;
   font-style: italic;
-  margin-bottom: 16px;
+  margin: 16px 0 20px 0;
+  font-size: 1em;
+  line-height: 1.4;
 }
 
 .income-box, .today-box {
-  background: #f3f8fb;
-  border-radius: 8px;
-  margin: 12px 0;
-  padding: 14px 10px;
-  box-shadow: 0 1px 4px rgba(62,198,193,0.06);
+  background: linear-gradient(135deg, #f8fbff 0%, #f0f7ff 100%);
+  border: 1px solid rgba(62,198,193,0.1);
+  border-radius: 12px;
+  margin: 15px 0;
+  padding: 18px 15px;
+  box-shadow: 0 2px 12px rgba(62,198,193,0.08);
   transition: all 0.3s ease;
+  position: relative;
 }
 
 .income-label, .today-label {
-  color: #888;
-  font-size: 0.95em;
+  color: #666;
+  font-size: 1em;
+  font-weight: 500;
+  margin-bottom: 8px;
 }
 
 .income-value, .today-value {
-  font-size: 2.1em;
-  font-weight: bold;
-  color: #222;
-  margin: 6px 0 4px 0;
+  font-size: 2.4em;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 8px 0 12px 0;
+  letter-spacing: -0.02em;
 }
 
 
 
 .income-progress {
-  background: #e0e0e0;
-  border-radius: 6px;
-  height: 10px;
-  margin: 8px 0 4px 0;
-  width: 90%;
-  margin-left: 5%;
+  background: linear-gradient(90deg, #f0f0f0 0%, #e8e8e8 100%);
+  border-radius: 8px;
+  height: 12px;
+  margin: 12px 0 8px 0;
+  width: 92%;
+  margin-left: 4%;
   position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  overflow: hidden;
 }
 
 .income-progress .progress-bar {
@@ -67,16 +86,24 @@ h1 {
 }
 
 .income-desc, .income-percent {
-  color: #888;
-  font-size: 0.95em;
+  color: #666;
+  font-size: 1em;
+  font-weight: 500;
   display: inline-block;
-  margin: 2px 6px;
+  margin: 4px 8px;
+}
+
+.income-percent {
+  color: #3ec6c1;
+  font-weight: 600;
 }
 
 .countdown {
   color: #3ec6c1;
-  font-size: 1.1em;
-  margin-top: 8px;
+  font-size: 1.2em;
+  font-weight: 600;
+  margin-top: 12px;
+  padding: 8px 0;
 }
 
 /* 加班按钮容器 */
@@ -88,51 +115,95 @@ h1 {
 
 /* 加班按钮 */
 .overtime-btn {
-  padding: 8px 16px;
+  padding: 10px 20px;
   background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
   color: white;
   border: none;
-  border-radius: 20px;
+  border-radius: 22px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 12px rgba(255, 107, 107, 0.3);
+  min-height: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.overtime-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.overtime-btn:hover::before {
+  left: 100%;
 }
 
 .overtime-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+  box-shadow: 0 5px 16px rgba(255, 107, 107, 0.4);
 }
 
 .overtime-btn.active {
   background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
-  box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
+  box-shadow: 0 3px 12px rgba(78, 205, 196, 0.3);
 }
 
 .overtime-btn.active:hover {
-  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.4);
+  box-shadow: 0 5px 16px rgba(78, 205, 196, 0.4);
+}
+
+.overtime-btn:active {
+  transform: translateY(0);
 }
 
 .footer {
-  margin: 18px 0 8px 0;
-  color: #aaa;
-  font-size: 0.95em;
+  margin: 20px 0 12px 0;
+  color: #999;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.footer::before {
+  content: '☕';
+  font-size: 1.1em;
 }
 
 #setIncomeBtn {
-  margin-top: 8px;
-  padding: 8px 18px;
-  background: #3ec6c1;
+  margin-top: 12px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #3ec6c1 0%, #2ea9a4 100%);
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 25px;
   font-size: 1em;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(62, 198, 193, 0.3);
+  min-height: 44px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 #setIncomeBtn:hover {
-  background: #2ea9a4;
+  background: linear-gradient(135deg, #2ea9a4 0%, #238b85 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(62, 198, 193, 0.4);
+}
+
+#setIncomeBtn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(62, 198, 193, 0.3);
 }
 
 
@@ -742,4 +813,85 @@ h1 {
   75% {
     transform: scale(1.12) rotate(2deg);
   }
+}
+
+/* 佛系模式样式 */
+.container.zen-mode {
+  filter: grayscale(80%) contrast(0.8) brightness(0.9);
+  opacity: 0.85;
+}
+
+.container.zen-mode h1 {
+  color: #666 !important;
+}
+
+.container.zen-mode .slogan {
+  color: #999 !important;
+}
+
+.container.zen-mode .income-box,
+.container.zen-mode .today-box {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%) !important;
+  border-color: rgba(0,0,0,0.1) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+.container.zen-mode .income-value,
+.container.zen-mode .today-value {
+  color: #555 !important;
+  text-shadow: none !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+.container.zen-mode .countdown {
+  color: #666 !important;
+}
+
+.container.zen-mode .progress-bar {
+  background: linear-gradient(90deg, #ccc 0%, #999 100%) !important;
+  animation: none !important;
+  box-shadow: none !important;
+}
+
+.container.zen-mode .income-percent {
+  color: #666 !important;
+}
+
+.container.zen-mode .income-desc {
+  color: #777 !important;
+}
+
+.container.zen-mode .footer {
+  color: #bbb !important;
+}
+
+.container.zen-mode #setIncomeBtn {
+  background: linear-gradient(135deg, #999 0%, #777 100%) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+}
+
+.container.zen-mode #setIncomeBtn:hover {
+  background: linear-gradient(135deg, #777 0%, #555 100%) !important;
+}
+
+.container.zen-mode .overtime-btn {
+  background: linear-gradient(135deg, #999 0%, #777 100%) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+}
+
+.container.zen-mode .overtime-btn:hover {
+  background: linear-gradient(135deg, #777 0%, #555 100%) !important;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3) !important;
+}
+
+.container.zen-mode .overtime-btn.active {
+  background: linear-gradient(135deg, #888 0%, #666 100%) !important;
+}
+
+/* 佛系模式下禁用所有动画和特效 */
+.container.zen-mode * {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.1s !important;
 }

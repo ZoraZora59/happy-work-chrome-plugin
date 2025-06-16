@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
     } else if (moodState.mood === 'euphoric') {
       dynamicMaxEffects = 8; // 下班冲刺阶段允许8个
     } else if (moodState.mood === 'explosive') {
-      dynamicMaxEffects = 15; // 终极爆发阶段允许15个
+      dynamicMaxEffects = 8; // 终极爆发阶段从15个降低到8个，减少性能消耗
     }
     
     if (effectCount >= dynamicMaxEffects) return;
@@ -430,6 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function updateIncomeEnhanced() {
     chrome.storage.sync.get(['incomeSettings', 'displayIncomeState', 'isAfterWorkOvertime'], function (result) {
       const settings = result.incomeSettings;
+      const isZenMode = settings?.zenMode || false;
       
       if (!settings || !settings.salary) {
         incomeValue.textContent = '¥0.00';
@@ -536,8 +537,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // 更新显示
         incomeValue.textContent = `${currency}${displayIncome.toFixed(2)}`;
         
-        // 添加金钱特效（根据心情状态智能调整频率和概率）
-        if (incomeIncrease > 0.001) { // 降低触发门槛，让更多小金额也能触发
+        // 添加金钱特效（根据心情状态智能调整频率和概率，佛系模式下禁用）
+        if (incomeIncrease > 0.001 && !isZenMode) { // 佛系模式下不显示特效
           const moodState = getWorkMoodState(progressPercent);
           
           // 基础概率计算（根据金额大小）
@@ -663,33 +664,33 @@ document.addEventListener('DOMContentLoaded', function () {
       // 更新加班按钮显示状态
       updateOvertimeButtonVisibility(todayWorkInfo, normalSeconds, dailyWorkSeconds);
       
-      // 更新心情状态显示（考虑加班状态）
-      updateMoodDisplay(progressPercent, isAfterWorkOvertime && afterWorkSeconds > 0);
+      // 更新心情状态显示（考虑加班状态和佛系模式）
+      updateMoodDisplay(progressPercent, isAfterWorkOvertime && afterWorkSeconds > 0, isZenMode);
       
-      // 终极爆发阶段的特殊效果
-      if (progressPercent >= 95) {
-        // 概率触发金钱雨
-        if (Math.random() < 0.075) {
+      // 终极爆发阶段的特殊效果（降低频率避免卡顿，佛系模式下禁用）
+      if (progressPercent >= 95 && !isZenMode) {
+        // 降低金钱雨触发概率，减少性能消耗
+        if (Math.random() < 0.02) { // 从0.075降低到0.02
           triggerMoneyRain(progressPercent);
         }
-        // 概率触发宝箱爆炸特效
-        if (Math.random() < 0.045) {
+        // 降低宝箱爆炸特效触发概率
+        if (Math.random() < 0.015) { // 从0.045降低到0.015
           triggerTreasureExplosion(progressPercent);
         }
       }
     });
     }
   
-  // 金钱雨特效（终极爆发阶段专用）
+  // 金钱雨特效（终极爆发阶段专用，优化性能）
   function triggerMoneyRain(progressPercent) {
-    const rainCount = 5 + Math.floor(Math.random() * 8); // 5-12个特效
+    const rainCount = 3 + Math.floor(Math.random() * 4); // 减少到3-6个特效
     const baseAmounts = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0];
     
     for (let i = 0; i < rainCount; i++) {
       setTimeout(() => {
         const randomAmount = baseAmounts[Math.floor(Math.random() * baseAmounts.length)];
         addMoneyEffect(randomAmount, progressPercent);
-      }, i * 50 + Math.random() * 100); // 错峰触发
+      }, i * 80 + Math.random() * 120); // 增加间隔，减少同时特效数量
     }
   }
   
@@ -711,8 +712,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const centerX = container.offsetWidth / 2;
     const centerY = container.offsetHeight / 2;
     
-    // 生成12-20个金钱粒子
-    const particleCount = 12 + Math.floor(Math.random() * 9);
+    // 生成8-12个金钱粒子（减少数量提升性能）
+    const particleCount = 8 + Math.floor(Math.random() * 5);
     const amounts = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0];
     const symbols = ['¥', '$', '€', '💰', '💎', '✨', '⭐', '🎉', '🎊', '💸'];
     
@@ -785,7 +786,7 @@ document.addEventListener('DOMContentLoaded', function () {
             particle.parentNode.removeChild(particle);
           }
         }, 1500);
-      }, i * 20); // 快速连续爆发
+      }, i * 30); // 稍微增加间隔，减少瞬间计算负荷
     }
   }
   
@@ -796,11 +797,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const overtimeBox = document.querySelector('.overtime-box');
     if (!overtimeBox) return;
     
-    // 只在工作日的非工作时间显示加班按钮
-    const isWorkDay = todayWorkInfo.type === 'normal'; // 普通工作日
-    const isAfterWork = normalSeconds >= dailyWorkSeconds; // 已经超过正常工作时间
+    // 检查是否为工作日
+    const isWorkDay = todayWorkInfo.type === 'normal';
+    // 检查是否已过下班时间
+    const isAfterWork = normalSeconds >= dailyWorkSeconds;
+    // 检查是否启用了下班后加班设置
+    const hasAfterWorkSetting = todayWorkInfo.afterWorkMultiplier !== undefined;
     
-    if (isWorkDay && isAfterWork && todayWorkInfo.afterWorkMultiplier) {
+    if (isWorkDay && isAfterWork && hasAfterWorkSetting) {
       overtimeBox.style.display = 'block';
     } else {
       overtimeBox.style.display = 'none';
@@ -808,7 +812,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // 更新心情状态显示
-  function updateMoodDisplay(progressPercent, isInAfterWorkOvertime = false) {
+  function updateMoodDisplay(progressPercent, isInAfterWorkOvertime = false, isZenMode = false) {
     let moodState;
     
     // 如果在下班后加班状态，强制使用"心如止水"状态
@@ -858,17 +862,62 @@ document.addEventListener('DOMContentLoaded', function () {
       // 为所有心情状态添加对应的class
       progressBar.classList.add(moodState.mood);
     }
+    
+    // 应用佛系模式样式
+    const container = document.querySelector('.container');
+    if (container) {
+      if (isZenMode) {
+        container.classList.add('zen-mode');
+      } else {
+        container.classList.remove('zen-mode');
+      }
+    }
   }
   
-  // 启动更新循环，固定快速刷新让收入持续变化
+  // 启动更新循环，动态调整刷新频率
+  let isHighPerformanceMode = false;
+  
   function startUpdateLoop() {
     // 清除之前的定时器
     if (currentRefreshInterval) {
       clearInterval(currentRefreshInterval);
     }
     
-    // 设置固定的快速刷新间隔（100ms，每秒10次更新，平衡性能和流畅度）
-    currentRefreshInterval = setInterval(updateIncomeEnhanced, 100);
+    // 根据心情状态动态调整刷新频率
+    function adaptiveUpdate() {
+      chrome.storage.sync.get(['incomeSettings'], function(result) {
+        const settings = result.incomeSettings;
+        if (!settings) return;
+        
+        const workStart = settings.workStart || '09:00';
+        const workEnd = settings.workEnd || '18:00';
+        const breaks = settings.breaks || [];
+        const dailyWorkMinutes = calculateWorkMinutes(workStart, workEnd, breaks);
+        const dailyWorkSeconds = dailyWorkMinutes * 60;
+        const workData = getWorkedSeconds(workStart, workEnd, breaks, false);
+        const progressPercent = Math.min(100, (workData.normalSeconds / dailyWorkSeconds) * 100);
+        
+        // 在爆发阶段降低刷新频率以提升性能
+        let updateInterval = 100; // 默认100ms
+        if (progressPercent >= 95) {
+          updateInterval = 200; // 爆发阶段降低到200ms
+          isHighPerformanceMode = true;
+        } else if (progressPercent >= 80) {
+          updateInterval = 150; // 狂欢阶段150ms
+          isHighPerformanceMode = false;
+        } else {
+          isHighPerformanceMode = false;
+        }
+        
+        clearInterval(currentRefreshInterval);
+        currentRefreshInterval = setInterval(updateIncomeEnhanced, updateInterval);
+      });
+    }
+    
+    // 初始设置
+    adaptiveUpdate();
+    // 每30秒重新评估一次刷新频率
+    setInterval(adaptiveUpdate, 30000);
   }
 
   // 设置收入按钮点击事件

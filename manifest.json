@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "打工人加油站",
-  "version": "1.0.0",
-  "description": "展示打工人当天收入和激励信息，帮你元气满满上班！",
+  "version": "3.0.0",
+  "description": "智能显示实时收入，动态心情系统，6段渐进式彩虹特效，让每一秒工作都充满动力！",
   "icons": {
     "16": "src/assets/icon16.png",
     "48": "src/assets/icon48.png",

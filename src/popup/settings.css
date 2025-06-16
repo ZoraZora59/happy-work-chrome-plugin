@@ -213,4 +213,89 @@ h2 {
 .frequency-setting,
 .base-week-setting {
   margin-top: 8px;
+}
+
+/* 佛系模式设置样式 */
+.zen-mode-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f3f8fb;
+  border-radius: 8px;
+  border: 1px solid #d0e2e8;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 110px;
+  width: calc(100% - 120px);
+  box-sizing: border-box;
+}
+
+.zen-mode-toggle:hover {
+  background: #eaf4f6;
+  border-color: #3ec6c1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(62,198,193,0.1);
+}
+
+.zen-mode-toggle input[type="checkbox"]:checked + .zen-mode-label strong {
+  color: #2ea9a4;
+}
+
+.zen-mode-toggle:has(input[type="checkbox"]:checked) {
+  background: #e8f7f6;
+  border-color: #3ec6c1;
+  box-shadow: 0 1px 4px rgba(62,198,193,0.15);
+}
+
+.zen-mode-toggle:has(input[type="checkbox"]:checked):hover {
+  background: #d4efed;
+  box-shadow: 0 2px 8px rgba(62,198,193,0.2);
+}
+
+.zen-mode-toggle input[type="checkbox"] {
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.zen-mode-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.zen-mode-label strong {
+  color: #3ec6c1;
+  font-size: 1em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zen-mode-label strong::before {
+  content: '🧘';
+  font-size: 1.1em;
+}
+
+.zen-mode-label small {
+  color: #666;
+  font-size: 0.9em;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* 佛系模式组样式 */
+.zen-mode-group {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.zen-mode-group > label:first-child {
+  margin-bottom: 8px;
+  flex: none;
 } 
