@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const weekendFrequency = document.getElementById('weekendFrequency');
   const baseWeekSetting = document.getElementById('baseWeekSetting');
   const baseWeekStart = document.getElementById('baseWeekStart');
+  const weekendDayCheckboxes = document.querySelectorAll('input[name="weekendDays"]');
   
   const afterWorkOvertimeEnabled = document.getElementById('afterWorkOvertimeEnabled');
   const afterWorkOvertimeDetail = document.getElementById('afterWorkOvertimeDetail');
@@ -84,17 +85,49 @@ document.addEventListener('DOMContentLoaded', function () {
     baseWeekSetting.style.display = (this.value !== '1') ? 'block' : 'none';
   };
 
-  // 更新工作日状态（休息日加班时置灰非工作日）
+  // 监听工作日变化，更新休息日加班选项状态
+  workDayCheckboxes.forEach(checkbox => {
+    checkbox.onchange = updateWorkDaysState;
+  });
+
+  // 监听休息日加班日期变化
+  weekendDayCheckboxes.forEach(checkbox => {
+    checkbox.onchange = updateWorkDaysState;
+  });
+
+  // 更新工作日和休息日加班选项的状态
   function updateWorkDaysState() {
     if (weekendOvertimeEnabled.checked) {
-      workDayCheckboxes.forEach(checkbox => {
-        if (!checkbox.checked) {
+      // 获取当前选中的工作日
+      const selectedWorkDays = Array.from(workDayCheckboxes)
+        .filter(cb => cb.checked)
+        .map(cb => parseInt(cb.value));
+
+      // 休息日加班选项：与工作日冲突的日期置灰
+      weekendDayCheckboxes.forEach(checkbox => {
+        const dayValue = parseInt(checkbox.value);
+        if (selectedWorkDays.includes(dayValue)) {
           checkbox.disabled = true;
+          checkbox.checked = false;
           checkbox.parentElement.style.opacity = '0.5';
+        } else {
+          checkbox.disabled = false;
+          checkbox.parentElement.style.opacity = '1';
         }
       });
-    } else {
+
+      // 工作日选项：不置灰，允许用户自由选择
       workDayCheckboxes.forEach(checkbox => {
+        checkbox.disabled = false;
+        checkbox.parentElement.style.opacity = '1';
+      });
+    } else {
+      // 未启用休息日加班时，恢复所有选项
+      workDayCheckboxes.forEach(checkbox => {
+        checkbox.disabled = false;
+        checkbox.parentElement.style.opacity = '1';
+      });
+      weekendDayCheckboxes.forEach(checkbox => {
         checkbox.disabled = false;
         checkbox.parentElement.style.opacity = '1';
       });
@@ -133,6 +166,12 @@ document.addEventListener('DOMContentLoaded', function () {
           baseWeekSetting.style.display = 'block';
           if (data.baseWeekStart) baseWeekStart.value = data.baseWeekStart;
         }
+      }
+      // 加载休息日加班日期设置
+      if (Array.isArray(data.weekendDays)) {
+        weekendDayCheckboxes.forEach(checkbox => {
+          checkbox.checked = data.weekendDays.includes(parseInt(checkbox.value));
+        });
       }
       updateWorkDaysState();
     }
@@ -232,11 +271,25 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
       
+      // 获取选中的休息日加班日期
+      const selectedWeekendDays = [];
+      weekendDayCheckboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+          selectedWeekendDays.push(parseInt(checkbox.value));
+        }
+      });
+      
+      if (selectedWeekendDays.length === 0) {
+        alert('请至少选择一个休息日加班日期');
+        return;
+      }
+      
       overtimeSettings.weekend = {
         enabled: true,
         multiplier: multiplier.toFixed(2),
         frequency: frequency,
-        baseWeekStart: baseWeek
+        baseWeekStart: baseWeek,
+        weekendDays: selectedWeekendDays
       };
     }
     
@@ -310,6 +363,7 @@ document.addEventListener('DOMContentLoaded', function () {
       weekendMultiplier: weekendOvertimeEnabled.checked ? weekendMultiplier.value : null,
       weekendFrequency: weekendOvertimeEnabled.checked ? weekendFrequency.value : null,
       baseWeekStart: (weekendOvertimeEnabled.checked && weekendFrequency.value !== '1') ? baseWeekStart.value : null,
+      weekendDays: weekendOvertimeEnabled.checked ? Array.from(weekendDayCheckboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value)) : null,
       afterWorkOvertimeEnabled: afterWorkOvertimeEnabled.checked,
       afterWorkMultiplier: afterWorkOvertimeEnabled.checked ? afterWorkMultiplier.value : null,
       

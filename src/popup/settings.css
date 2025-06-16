@@ -215,6 +215,26 @@ h2 {
   margin-top: 8px;
 }
 
+/* 休息日加班日期选择样式 */
+.weekend-days-setting {
+  margin-top: 8px;
+}
+
+.weekend-days-setting > label {
+  display: block;
+  font-size: 0.9em;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.weekend-days-setting .checkbox-group {
+  margin-left: 0;
+}
+
+.weekend-days-setting .checkbox-item {
+  margin-bottom: 6px;
+}
+
 /* 佛系模式设置样式 */
 .zen-mode-toggle {
   display: flex !important;

@@ -1,3 +1,25 @@
+/* 重置样式，去除所有默认边框和轮廓 */
+* {
+  box-sizing: border-box;
+}
+
+*:focus {
+  outline: none !important;
+}
+
+html {
+  border: none !important;
+  outline: none !important;
+  margin: 0;
+  padding: 0;
+}
+
+/* 强制移除Chrome扩展弹窗可能的默认样式 */
+html, body, .container {
+  border: none !important;
+  outline: none !important;
+}
+
 body {
   font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
   background: #fff;
@@ -5,6 +27,8 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 480px;
+  border: none;
+  outline: none;
 }
 
 .container {
@@ -12,7 +36,9 @@ body {
   background: #fff;
   text-align: center;
   min-height: 100vh;
-  box-sizing: border-box;
+  border: none;
+  outline: none;
+  overflow: hidden; /* 防止内容溢出产生滚动条边框 */
 }
 
 h1 {
@@ -42,7 +68,7 @@ h1::after {
 
 .income-box, .today-box {
   background: linear-gradient(135deg, #f8fbff 0%, #f0f7ff 100%);
-  border: 1px solid rgba(62,198,193,0.1);
+  border: 1px solid rgba(62,198,193,0.1) !important;
   border-radius: 12px;
   margin: 15px 0;
   padding: 18px 15px;
@@ -98,12 +124,22 @@ h1::after {
   font-weight: 600;
 }
 
+.countdown-container {
+  margin-top: 12px;
+  padding: 8px 0;
+}
+
+.countdown-label {
+  color: #666;
+  font-size: 0.9em;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
 .countdown {
   color: #3ec6c1;
   font-size: 1.2em;
   font-weight: 600;
-  margin-top: 12px;
-  padding: 8px 0;
 }
 
 /* 加班按钮容器 */
@@ -118,7 +154,7 @@ h1::after {
   padding: 10px 20px;
   background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
   color: white;
-  border: none;
+  border: none !important;
   border-radius: 22px;
   font-size: 14px;
   font-weight: 500;
@@ -128,6 +164,7 @@ h1::after {
   min-height: 40px;
   position: relative;
   overflow: hidden;
+  outline: none !important;
 }
 
 .overtime-btn::before {
@@ -183,7 +220,7 @@ h1::after {
   padding: 12px 24px;
   background: linear-gradient(135deg, #3ec6c1 0%, #2ea9a4 100%);
   color: #fff;
-  border: none;
+  border: none !important;
   border-radius: 25px;
   font-size: 1em;
   font-weight: 500;
@@ -193,6 +230,7 @@ h1::after {
   min-height: 44px;
   width: 100%;
   box-sizing: border-box;
+  outline: none !important;
 }
 
 #setIncomeBtn:hover {
@@ -444,6 +482,13 @@ h1::after {
   box-shadow: 0 2px 6px rgba(62,198,193,0.15);
 }
 
+.today-box.afterwork {
+  background: linear-gradient(135deg, #f7fbfc, #edf8f9);
+  border-left: 3px solid #7fb3d3;
+  box-shadow: 0 1px 4px rgba(127,179,211,0.1);
+  animation: afterworkBreath 8s ease-in-out infinite;
+}
+
 .today-box.excited {
   background: linear-gradient(135deg, #fff7e6, #ffeaa7);
   border-left: 3px solid #ffb86c;
@@ -571,6 +616,13 @@ h1::after {
   box-shadow: 0 1px 4px rgba(62,198,193,0.2);
 }
 
+/* 下班安逸 - 温和的蓝绿色 */
+.progress-bar.afterwork {
+  background: linear-gradient(90deg, #7fb3d3 0%, #a8d0e6 100%);
+  box-shadow: 0 1px 3px rgba(127,179,211,0.15);
+  animation: afterworkGlow 6s ease-in-out infinite;
+}
+
 /* 专注工作 - 单色带光效 */
 .progress-bar.focused {
   background: #3ec6c1;
@@ -634,6 +686,28 @@ h1::after {
   }
   50% {
     box-shadow: 0 2px 8px rgba(62,198,193,0.6);
+  }
+}
+
+/* 下班安逸状态的轻柔呼吸效果 */
+@keyframes afterworkBreath {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 1px 4px rgba(127,179,211,0.1);
+  }
+  50% {
+    transform: scale(1.005);
+    box-shadow: 0 2px 6px rgba(127,179,211,0.15);
+  }
+}
+
+/* 下班安逸进度条的轻柔光效 */
+@keyframes afterworkGlow {
+  0%, 100% {
+    box-shadow: 0 1px 3px rgba(127,179,211,0.15);
+  }
+  50% {
+    box-shadow: 0 2px 5px rgba(127,179,211,0.25);
   }
 }
 
@@ -842,6 +916,10 @@ h1::after {
   text-shadow: none !important;
   animation: none !important;
   transform: none !important;
+}
+
+.container.zen-mode .countdown-label {
+  color: #777 !important;
 }
 
 .container.zen-mode .countdown {

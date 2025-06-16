@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const incomePercent = document.getElementById('incomePercent');
   const todayValue = document.getElementById('todayValue');
   const countdown = document.getElementById('countdown');
+  const countdownLabel = document.getElementById('countdownLabel');
   const setIncomeBtn = document.getElementById('setIncomeBtn');
   const overtimeBtn = document.getElementById('overtimeBtn');
 
@@ -49,6 +50,35 @@ document.addEventListener('DOMContentLoaded', function () {
   function timeToSeconds(timeStr) {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 3600 + minutes * 60;
+  }
+
+  // 判断当前时间是否在工作时间内
+  function isCurrentlyInWorkTime(workStart, workEnd, breaks, includeAfterWork = false) {
+    const now = new Date();
+    const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    const startSeconds = timeToSeconds(workStart);
+    const endSeconds = timeToSeconds(workEnd);
+    
+    // 如果还没到上班时间，返回false
+    if (currentSeconds < startSeconds) {
+      return false;
+    }
+    
+    // 如果在正常工作时间内
+    if (currentSeconds <= endSeconds) {
+      // 检查是否在休息时间内
+      for (const breakTime of breaks) {
+        const breakStart = timeToSeconds(breakTime.start);
+        const breakEnd = timeToSeconds(breakTime.end);
+        if (currentSeconds >= breakStart && currentSeconds <= breakEnd) {
+          return false; // 在休息时间内
+        }
+      }
+      return true; // 在正常工作时间且不在休息时间
+    }
+    
+    // 超过正常下班时间，只有在加班模式下才算工作时间
+    return includeAfterWork;
   }
 
   // 计算当前时间已工作的秒数（更精确）
@@ -254,7 +284,18 @@ document.addEventListener('DOMContentLoaded', function () {
   
   // 计算工作进度和对应的情绪状态
   function getWorkMoodState(progressPercent) {
-    if (progressPercent < 20) {
+    // 如果已下班（进度>=100%），返回平静状态，避免过度兴奋的特效
+    if (progressPercent >= 100) {
+      return {
+        mood: 'afterwork',
+        name: '下班平静',
+        description: '工作已完成，心情平复',
+        effectMultiplier: 0.2,
+        animationSpeed: 0.7,
+        colors: ['#4fd4d1', '#7fb3d3'],
+        intervalMultiplier: 3.0
+      };
+    } else if (progressPercent < 20) {
       return {
         mood: 'calm',
         name: '上班初期',
@@ -364,6 +405,9 @@ document.addEventListener('DOMContentLoaded', function () {
       case 'calm':
         animationName = 'moneyRiseCalm';
         break;
+      case 'afterwork':
+        animationName = 'moneyRiseCalm'; // 使用平静的动画
+        break;
       case 'focused':
         animationName = 'moneyRiseFocused';
         break;
@@ -439,6 +483,7 @@ document.addEventListener('DOMContentLoaded', function () {
         progressBar.style.width = '0%';
         incomePercent.textContent = '0%';
         countdown.textContent = '00:00:00';
+        countdownLabel.textContent = '请先设置收入信息';
         return;
       }
 
@@ -515,8 +560,11 @@ document.addEventListener('DOMContentLoaded', function () {
         displayIncome = currentIncome;
       }
       
-      // 如果在工作时间内，让显示收入平滑增长
-      if (totalWorkedSeconds > 0) {
+      // 判断当前是否在工作时间内（只有当前正在工作时收入才应该增长）
+      const isCurrentlyWorking = isCurrentlyInWorkTime(workStart, workEnd, breaks, isAfterWorkOvertime);
+      
+      // 如果当前正在工作时间内，让显示收入平滑增长
+      if (isCurrentlyWorking && totalWorkedSeconds > 0) {
         // 计算这段时间应该增加的收入（综合正常工作和加班）
         let incomeIncrease = 0;
         if (normalSeconds > 0) {
@@ -534,11 +582,11 @@ document.addEventListener('DOMContentLoaded', function () {
           displayIncome = currentIncome;
         }
         
-        // 更新显示
+        // 更新显示（工作时间内显示两位小数）
         incomeValue.textContent = `${currency}${displayIncome.toFixed(2)}`;
         
         // 添加金钱特效（根据心情状态智能调整频率和概率，佛系模式下禁用）
-        if (incomeIncrease > 0.001 && !isZenMode) { // 佛系模式下不显示特效
+        if (incomeIncrease > 0.001 && !isZenMode && isCurrentlyWorking) { // 佛系模式下不显示特效，且必须当前正在工作
           const moodState = getWorkMoodState(progressPercent);
           
           // 基础概率计算（根据金额大小）
@@ -590,20 +638,25 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
       } else {
-        // 不在工作时间或没有收入，直接显示计算值
-        displayIncome = currentIncome;
-        incomeValue.textContent = `${currency}${currentIncome.toFixed(2)}`;
+        // 不在当前工作时间，保持显示收入不变（避免下班后收入回退）
+        if (displayIncome === 0 || displayIncome < currentIncome) {
+          displayIncome = currentIncome;
+        }
+        // 下班后显示两位小数，但在计算今日收入一致性时会处理
+        incomeValue.textContent = `${currency}${displayIncome.toFixed(2)}`;
       }
       
              lastUpdateTime = now;
        
        // 每5秒保存一次显示收入状态到存储，避免过于频繁
-       if (now - lastSaveTime > 5000) {
+       // 只有在工作时间内或收入确实发生变化时才保存
+       if (now - lastSaveTime > 5000 && (isCurrentlyWorking || displayIncome !== lastIncome)) {
          chrome.storage.sync.set({
            displayIncomeState: {
              date: todayStr,
              income: displayIncome,
-             timestamp: now
+             timestamp: now,
+             isCurrentlyWorking: isCurrentlyWorking
            }
          });
          lastSaveTime = now;
@@ -614,12 +667,38 @@ document.addEventListener('DOMContentLoaded', function () {
        
        lastIncome = currentIncome;
       
-      // 显示今日预期收入（不包含下班后加班费，但包含节假日/休息日加班倍数）
-      let todayExpectedIncome = dailySalary;
-      if (todayWorkInfo.type === 'holiday' || todayWorkInfo.type === 'weekend') {
-        todayExpectedIncome = dailySalary * todayWorkInfo.multiplier;
+      // 显示今日收入 - 根据是否下班选择显示预期收入还是实际收入
+      let todayDisplayIncome;
+      let todayIncomeLabel = '今日到手';
+      
+             if (progressPercent >= 100 || !isCurrentlyWorking) {
+         // 已下班或不在工作时间：显示实际收入，确保与实时收入一致
+         todayDisplayIncome = currentIncome;
+         todayIncomeLabel = '今日实收';
+       } else {
+        // 工作时间内：显示预期全天收入
+        todayDisplayIncome = dailySalary;
+        if (todayWorkInfo.type === 'holiday' || todayWorkInfo.type === 'weekend') {
+          todayDisplayIncome = dailySalary * todayWorkInfo.multiplier;
+        }
+        todayIncomeLabel = '今日到手';
       }
-      todayValue.textContent = `${currency}${todayExpectedIncome.toFixed(0)}`;
+      
+      // 更新今日收入标签和数值
+      const todayLabel = document.querySelector('.today-label');
+      if (todayLabel) {
+        todayLabel.textContent = todayIncomeLabel;
+      }
+             // 显示今日收入，使用合理的格式
+       if (progressPercent >= 100 || !isCurrentlyWorking) {
+         // 下班后：两个金额都显示整数，保持一致
+         todayValue.textContent = `${currency}${Math.round(todayDisplayIncome)}`;
+         // 同时更新实时收入为整数格式以保持一致
+         incomeValue.textContent = `${currency}${Math.round(displayIncome)}`;
+       } else {
+         // 工作时间内：今日预期显示整数，实时收入显示小数
+         todayValue.textContent = `${currency}${Math.round(todayDisplayIncome)}`;
+       }
       progressBar.style.width = `${progressPercent}%`;
       incomePercent.textContent = `${Math.round(progressPercent)}%`;
       
@@ -653,13 +732,44 @@ document.addEventListener('DOMContentLoaded', function () {
       } else if (todayWorkInfo.type === 'weekend') {
         incomeDesc.textContent = `休息日加班 (${todayWorkInfo.multiplier}倍薪资) ${valueText}`;
       } else if (todayWorkInfo.afterWorkMultiplier && afterWorkSeconds > 0) {
-        incomeDesc.textContent = `工作日 (下班后${todayWorkInfo.afterWorkMultiplier}倍薪资) ${valueText}`;
+        incomeDesc.textContent = valueText;
       } else {
         incomeDesc.textContent = valueText;
       }
       
-      // 更新倒计时
-      countdown.textContent = getCountdown(workEnd);
+      // 更新倒计时和标签
+      const countdownText = getCountdown(workEnd);
+      
+      // 根据不同状态显示不同的标签和内容
+      if (todayWorkInfo.type === 'off') {
+        countdownLabel.textContent = '今天是休息日';
+        countdown.textContent = '好好放松吧';
+      } else if (countdownText === '00:00:00' && progressPercent >= 100) {
+        if (isAfterWorkOvertime && afterWorkSeconds > 0) {
+          countdownLabel.textContent = '已下班，正在加班';
+          const afterWorkHours = Math.floor(afterWorkSeconds / 3600);
+          const afterWorkMins = Math.floor((afterWorkSeconds % 3600) / 60);
+          countdown.textContent = `已加班 ${afterWorkHours.toString().padStart(2, '0')}:${afterWorkMins.toString().padStart(2, '0')}`;
+        } else {
+          countdownLabel.textContent = '今日工作已完成';
+          countdown.textContent = '下班快乐！';
+        }
+      } else if (progressPercent >= 95) {
+        countdownLabel.textContent = '马上就要下班啦！';
+        countdown.textContent = countdownText;
+      } else if (progressPercent >= 80) {
+        countdownLabel.textContent = '距离下班还有';
+        countdown.textContent = countdownText;
+      } else if (progressPercent >= 50) {
+        countdownLabel.textContent = '今日进度过半，加油';
+        countdown.textContent = countdownText;
+      } else if (progressPercent >= 20) {
+        countdownLabel.textContent = '稳步推进中';
+        countdown.textContent = countdownText;
+      } else {
+        countdownLabel.textContent = '新的一天开始了';
+        countdown.textContent = countdownText;
+      }
       
       // 更新加班按钮显示状态
       updateOvertimeButtonVisibility(todayWorkInfo, normalSeconds, dailyWorkSeconds);
@@ -667,8 +777,8 @@ document.addEventListener('DOMContentLoaded', function () {
       // 更新心情状态显示（考虑加班状态和佛系模式）
       updateMoodDisplay(progressPercent, isAfterWorkOvertime && afterWorkSeconds > 0, isZenMode);
       
-      // 终极爆发阶段的特殊效果（降低频率避免卡顿，佛系模式下禁用）
-      if (progressPercent >= 95 && !isZenMode) {
+      // 终极爆发阶段的特殊效果（降低频率避免卡顿，佛系模式下禁用，下班后不触发）
+      if (progressPercent >= 95 && progressPercent < 100 && !isZenMode && isCurrentlyWorking) {
         // 降低金钱雨触发概率，减少性能消耗
         if (Math.random() < 0.02) { // 从0.075降低到0.02
           triggerMoneyRain(progressPercent);
@@ -826,6 +936,17 @@ document.addEventListener('DOMContentLoaded', function () {
         colors: ['#3ec6c1', '#4fd4d1'],
         intervalMultiplier: 2.0
       };
+    } else if (progressPercent >= 100) {
+      // 如果已经下班（进度>=100%）且不是加班状态，使用"下班安逸"状态
+      moodState = {
+        mood: 'afterwork',
+        name: '下班安逸',
+        description: '今日工作已完成，心情逐渐平复',
+        effectMultiplier: 0.2, // 特效概率很低
+        animationSpeed: 0.7,   // 动画速度较慢
+        colors: ['#4fd4d1', '#7fb3d3'], // 温和的蓝绿色
+        intervalMultiplier: 3.0 // 特效间隔很长
+      };
     } else {
       moodState = getWorkMoodState(progressPercent);
     }
@@ -843,6 +964,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // 根据心情状态调整收入数字、今日到手数字和进度条的显示效果
     if (incomeValue) {
       incomeValue.className = 'income-value';
+      // 下班安逸状态不应用鬼畜色彩效果
       if (moodState.mood === 'excited' || moodState.mood === 'euphoric' || moodState.mood === 'explosive') {
         incomeValue.classList.add(moodState.mood);
       }
@@ -851,6 +973,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const todayValue = document.getElementById('todayValue');
     if (todayValue) {
       todayValue.className = 'today-value';
+      // 下班安逸状态不应用鬼畜色彩效果
       if (moodState.mood === 'excited' || moodState.mood === 'euphoric' || moodState.mood === 'explosive') {
         todayValue.classList.add(moodState.mood);
       }
