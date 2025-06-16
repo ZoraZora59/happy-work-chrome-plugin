@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>收入设置</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="settings-container">
+    <h2>收入设置</h2>
+    <form id="incomeForm">
+      <div class="section">
+        <div class="section-title"><span class="icon">💰</span> 收入设置</div>
+        <div class="form-group">
+          <label for="salary">月薪</label>
+          <input type="number" id="salary" name="salary" min="0.01" step="0.01" required placeholder="请输入月薪" />
+        </div>
+        <div class="form-group">
+          <label for="bonus">年终奖 <span class="optional">（可选）</span></label>
+          <input type="number" id="bonus" name="bonus" min="0" step="0.01" placeholder="可不填" />
+        </div>
+        <div class="form-group">
+          <label for="incomeCurrency">收入币种</label>
+          <select id="incomeCurrency" name="incomeCurrency">
+            <option value="CNY">人民币 (¥)</option>
+            <option value="USD">美元 ($)</option>
+            <option value="EUR">欧元 (€)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="displayCurrency">显示币种</label>
+          <select id="displayCurrency" name="displayCurrency">
+            <option value="CNY">人民币 (¥)</option>
+            <option value="USD">美元 ($)</option>
+            <option value="EUR">欧元 (€)</option>
+          </select>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title"><span class="icon">⏰</span> 工作时间</div>
+        <div class="form-group workdays-group">
+          <label>常规工作日</label>
+          <div class="checkbox-group">
+            <label class="checkbox-item">
+              <input type="checkbox" name="workDays" value="1" checked> 周一
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="workDays" value="2" checked> 周二
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="workDays" value="3" checked> 周三
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="workDays" value="4" checked> 周四
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="workDays" value="5" checked> 周五
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="workDays" value="6"> 周六
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="workDays" value="0"> 周日
+            </label>
+          </div>
+        </div>
+        <div class="form-group overtime-scenarios">
+          <label>加班场景设置</label>
+          <div class="overtime-scenario">
+            <label class="scenario-header">
+              <input type="checkbox" id="holidayOvertimeEnabled" name="holidayOvertimeEnabled"> 节假日加班
+            </label>
+            <div class="scenario-detail" id="holidayOvertimeDetail" style="display: none;">
+              <label for="holidayMultiplier">薪资倍数:</label>
+              <input type="number" id="holidayMultiplier" name="holidayMultiplier" min="0" step="0.01" value="3.00" placeholder="如: 3.00">
+            </div>
+          </div>
+          <div class="overtime-scenario">
+            <label class="scenario-header">
+              <input type="checkbox" id="weekendOvertimeEnabled" name="weekendOvertimeEnabled"> 普通休息日加班
+            </label>
+            <div class="scenario-detail" id="weekendOvertimeDetail" style="display: none;">
+              <label for="weekendMultiplier">薪资倍数:</label>
+              <input type="number" id="weekendMultiplier" name="weekendMultiplier" min="0" step="0.01" value="2.00" placeholder="如: 2.00">
+              <div class="frequency-setting">
+                <label for="weekendFrequency">频率:</label>
+                <select id="weekendFrequency" name="weekendFrequency">
+                  <option value="1">每周</option>
+                  <option value="2">每两周</option>
+                  <option value="3">每三周</option>
+                  <option value="4">每四周</option>
+                </select>
+              </div>
+              <div class="base-week-setting" id="baseWeekSetting" style="display: none;">
+                <label for="baseWeekStart">基准周起始日期:</label>
+                <input type="date" id="baseWeekStart" name="baseWeekStart">
+              </div>
+            </div>
+          </div>
+          <div class="overtime-scenario">
+            <label class="scenario-header">
+              <input type="checkbox" id="afterWorkOvertimeEnabled" name="afterWorkOvertimeEnabled"> 工作日下班后加班
+            </label>
+            <div class="scenario-detail" id="afterWorkOvertimeDetail" style="display: none;">
+              <label for="afterWorkMultiplier">薪资倍数:</label>
+              <input type="number" id="afterWorkMultiplier" name="afterWorkMultiplier" min="0" step="0.01" value="1.50" placeholder="如: 1.50">
+            </div>
+          </div>
+        </div>
+        <div class="form-group time-range-group">
+          <label>工作时间</label>
+          <input type="time" id="workStart" name="workStart" required> 至
+          <input type="time" id="workEnd" name="workEnd" required>
+        </div>
+        <div class="form-group">
+          <label>休息时间</label>
+          <div id="breaksContainer"></div>
+          <button type="button" id="addBreakBtn">添加休息时间</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title"><span class="icon">💰</span> 价值衡量</div>
+        <div class="form-group">
+          <label for="valueItem">衡量物品</label>
+          <select id="valueItem" name="valueItem">
+            <option value="cola">可乐（3元）</option>
+            <option value="chicken">辣翅（14元）</option>
+            <option value="burger">巨无霸（28元）</option>
+            <option value="custom">自定义</option>
+          </select>
+        </div>
+        <div class="form-group" id="customItemGroup" style="display: none;">
+          <label for="customItemName">物品名称</label>
+          <input type="text" id="customItemName" name="customItemName" maxlength="10" placeholder="如：奶茶、咖啡">
+        </div>
+        <div class="form-group" id="customPriceGroup" style="display: none;">
+          <label for="customItemPrice">物品价格</label>
+          <input type="number" id="customItemPrice" name="customItemPrice" min="0.1" step="0.1" placeholder="请输入价格">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="saveBtn">保存设置</button>
+      </div>
+    </form>
+  </div>
+  <script src="settings.js"></script>
+</body>
+</html> 

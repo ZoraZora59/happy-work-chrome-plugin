@@ -1,0 +1,178 @@
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+  background: #f8fafc;
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 480px;
+}
+
+.container {
+  padding: 20px 18px 12px 18px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  text-align: center;
+}
+
+h1 {
+  color: #3ec6c1;
+  margin: 0 0 8px 0;
+  font-size: 1.6em;
+  font-weight: bold;
+}
+
+.slogan {
+  color: #888;
+  font-style: italic;
+  margin-bottom: 16px;
+}
+
+.income-box, .today-box {
+  background: #f3f8fb;
+  border-radius: 8px;
+  margin: 12px 0;
+  padding: 14px 10px;
+  box-shadow: 0 1px 4px rgba(62,198,193,0.06);
+}
+
+.income-label, .today-label {
+  color: #888;
+  font-size: 0.95em;
+}
+
+.income-value, .today-value {
+  font-size: 2.1em;
+  font-weight: bold;
+  color: #222;
+  margin: 6px 0 4px 0;
+}
+
+.income-progress {
+  background: #e0e0e0;
+  border-radius: 6px;
+  height: 10px;
+  margin: 8px 0 4px 0;
+  width: 90%;
+  margin-left: 5%;
+  position: relative;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, #3ec6c1 0%, #ffb86c 100%);
+  height: 100%;
+  border-radius: 6px;
+  width: 0%;
+  transition: width 0.5s;
+}
+
+.income-desc, .income-percent {
+  color: #888;
+  font-size: 0.95em;
+  display: inline-block;
+  margin: 2px 6px;
+}
+
+.countdown {
+  color: #3ec6c1;
+  font-size: 1.1em;
+  margin-top: 8px;
+}
+
+.footer {
+  margin: 18px 0 8px 0;
+  color: #aaa;
+  font-size: 0.95em;
+}
+
+#setIncomeBtn {
+  margin-top: 8px;
+  padding: 8px 18px;
+  background: #3ec6c1;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#setIncomeBtn:hover {
+  background: #2ea9a4;
+}
+
+
+
+/* 金钱增长动画（优化版本） */
+@keyframes moneyRise {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.8) rotate(-5deg);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.2) rotate(5deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-25px) scale(1.1) rotate(-2deg);
+  }
+  80% {
+    opacity: 0.4;
+    transform: translateY(-45px) scale(0.9) rotate(2deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.7) rotate(0deg);
+  }
+}
+
+/* 收入数字发光效果 */
+.income-value {
+  animation: glow 2s ease-in-out infinite alternate;
+  text-shadow: 0 0 5px rgba(62,198,193,0.3);
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 5px rgba(62,198,193,0.3);
+  }
+  to {
+    text-shadow: 0 0 10px rgba(62,198,193,0.6), 0 0 15px rgba(62,198,193,0.4);
+  }
+}
+
+/* 进度条彩虹效果增强 */
+.progress-bar {
+  background: linear-gradient(90deg, 
+    #ff6b6b 0%, 
+    #ffa726 25%, 
+    #ffeb3b 50%, 
+    #66bb6a 75%, 
+    #3ec6c1 100%);
+  box-shadow: 0 2px 8px rgba(62,198,193,0.3);
+  animation: progressGlow 3s ease-in-out infinite;
+}
+
+@keyframes progressGlow {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(62,198,193,0.3);
+  }
+  50% {
+    box-shadow: 0 2px 12px rgba(62,198,193,0.6);
+  }
+}
+
+/* 今日收入数字跳动 */
+.today-value {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}

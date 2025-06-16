@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "打工人加油站",
+  "version": "1.0.0",
+  "description": "展示打工人当天收入和激励信息，帮你元气满满上班！",
+  "icons": {
+    "16": "src/assets/icon16.png",
+    "48": "src/assets/icon48.png",
+    "128": "src/assets/icon128.png"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_icon": {
+      "16": "src/assets/icon16.png",
+      "48": "src/assets/icon48.png",
+      "128": "src/assets/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/content.js"]
+    }
+  ],
+  "permissions": [
+    "storage",
+    "tabs"
+  ]
+} 

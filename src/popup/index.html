@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>打工人加油站</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>打工人加油站</h1>
+    <p class="slogan">上班的我：风吹就倒；下班的我：狗追不到</p>
+    <div class="income-box">
+      <div class="income-label">实时收入</div>
+      <div class="income-value" id="incomeValue">¥0.00</div>
+      <div class="income-progress">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="income-desc" id="incomeDesc">约等于几个辣翅</div>
+      <div class="income-percent" id="incomePercent">0%</div>
+    </div>
+    <div class="today-box">
+      <div class="today-label">今日到手</div>
+      <div class="today-value" id="todayValue">¥0.00</div>
+      <div class="countdown">
+        哈哈要下班啦 <span id="countdown">00:00:00</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>喜欢这个插件？请我喝杯咖啡吧！</span>
+    </div>
+    <button id="setIncomeBtn">设置收入信息</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

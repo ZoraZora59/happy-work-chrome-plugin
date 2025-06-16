@@ -1,0 +1,216 @@
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+  background: #f8fafc;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-container {
+  max-width: 540px;
+  margin: 32px auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 32px 28px 24px 28px;
+}
+
+h2 {
+  text-align: center;
+  color: #3ec6c1;
+  margin-bottom: 24px;
+  font-size: 1.6em;
+}
+
+.section {
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.section-title {
+  font-size: 1.15em;
+  color: #3ec6c1;
+  margin-bottom: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+.section-title .icon {
+  margin-right: 6px;
+  font-size: 1.2em;
+}
+
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+.form-group label {
+  flex: 0 0 110px;
+  color: #444;
+  font-size: 1em;
+}
+
+/* 工作日选择组 */
+.workdays-group {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.workdays-group > label {
+  margin-bottom: 8px;
+  flex: none;
+}
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: 110px;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.95em;
+  color: #555;
+  cursor: pointer;
+  flex: 0 0 auto;
+  min-width: 60px;
+}
+.checkbox-item input[type="checkbox"] {
+  margin-right: 4px;
+  margin-left: 0;
+}
+.form-group input[type="number"],
+.form-group input[type="time"],
+.form-group select {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid #d0e2e8;
+  border-radius: 6px;
+  font-size: 1em;
+  margin-left: 8px;
+}
+.form-group input[type="number"]::-webkit-input-placeholder {
+  color: #bbb;
+}
+.optional {
+  color: #aaa;
+  font-size: 0.95em;
+}
+
+.time-range-group input[type="time"] {
+  width: 110px;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+#breaksContainer {
+  margin-bottom: 8px;
+  width: 100%;
+}
+.break-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.break-row input[type="time"] {
+  width: 110px;
+  margin-right: 8px;
+}
+.break-row button {
+  background: #ffb6b6;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  margin-left: 8px;
+  font-size: 0.95em;
+}
+#addBreakBtn {
+  background: #3ec6c1;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 18px;
+  font-size: 1em;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.2s;
+}
+#addBreakBtn:hover {
+  background: #2ea9a4;
+}
+
+.form-actions {
+  text-align: center;
+  margin-top: 18px;
+}
+#saveBtn {
+  background: #3ec6c1;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 38px;
+  font-size: 1.1em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(62,198,193,0.08);
+  transition: background 0.2s;
+}
+#saveBtn:hover {
+  background: #2ea9a4;
+}
+
+
+
+/* 加班场景设置样式 */
+.overtime-scenarios {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.overtime-scenarios > label {
+  margin-bottom: 12px;
+  flex: none;
+}
+.overtime-scenario {
+  margin-bottom: 16px;
+  margin-left: 110px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 12px;
+  width: calc(100% - 120px);
+}
+.scenario-header {
+  font-weight: bold;
+  color: #444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.scenario-header input[type="checkbox"] {
+  margin-right: 8px;
+  margin-left: 0;
+}
+.scenario-detail {
+  margin-top: 12px;
+  padding-left: 20px;
+}
+.scenario-detail label {
+  display: inline-block;
+  width: 80px;
+  font-size: 0.9em;
+  color: #666;
+  margin-right: 8px;
+}
+.scenario-detail input[type="number"],
+.scenario-detail input[type="date"],
+.scenario-detail select {
+  padding: 6px 8px;
+  border: 1px solid #d0e2e8;
+  border-radius: 4px;
+  font-size: 0.9em;
+  width: 120px;
+}
+.frequency-setting,
+.base-week-setting {
+  margin-top: 8px;
+} 
