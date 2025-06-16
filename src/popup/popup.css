@@ -1,6 +1,6 @@
 body {
   font-family: 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
-  background: #f8fafc;
+  background: #fff;
   margin: 0;
   padding: 0;
   min-width: 320px;
@@ -10,9 +10,9 @@ body {
 .container {
   padding: 20px 18px 12px 18px;
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   text-align: center;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
 h1 {
@@ -34,6 +34,7 @@ h1 {
   margin: 12px 0;
   padding: 14px 10px;
   box-shadow: 0 1px 4px rgba(62,198,193,0.06);
+  transition: all 0.3s ease;
 }
 
 .income-label, .today-label {
@@ -48,6 +49,8 @@ h1 {
   margin: 6px 0 4px 0;
 }
 
+
+
 .income-progress {
   background: #e0e0e0;
   border-radius: 6px;
@@ -58,10 +61,7 @@ h1 {
   position: relative;
 }
 
-.progress-bar {
-  background: linear-gradient(90deg, #3ec6c1 0%, #ffb86c 100%);
-  height: 100%;
-  border-radius: 6px;
+.income-progress .progress-bar {
   width: 0%;
   transition: width 0.5s;
 }
@@ -77,6 +77,40 @@ h1 {
   color: #3ec6c1;
   font-size: 1.1em;
   margin-top: 8px;
+}
+
+/* 加班按钮容器 */
+.overtime-box {
+  margin: 15px 0;
+  text-align: center;
+  display: none; /* 默认隐藏，只在工作日非工作时间显示 */
+}
+
+/* 加班按钮 */
+.overtime-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}
+
+.overtime-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+.overtime-btn.active {
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
+}
+
+.overtime-btn.active:hover {
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.4);
 }
 
 .footer {
@@ -103,34 +137,321 @@ h1 {
 
 
 
-/* 金钱增长动画（优化版本） */
-@keyframes moneyRise {
+/* 平静阶段 - 优雅上升动画 */
+@keyframes moneyRiseCalm {
   0% {
+    opacity: 0.8;
+    transform: translateY(0) scale(0.9);
+  }
+  30% {
     opacity: 1;
-    transform: translateY(0) scale(0.8) rotate(-5deg);
+    transform: translateY(-8px) scale(1.0);
   }
-  20% {
-    opacity: 1;
-    transform: translateY(-10px) scale(1.2) rotate(5deg);
-  }
-  50% {
-    opacity: 0.9;
-    transform: translateY(-25px) scale(1.1) rotate(-2deg);
-  }
-  80% {
-    opacity: 0.4;
-    transform: translateY(-45px) scale(0.9) rotate(2deg);
+  70% {
+    opacity: 0.6;
+    transform: translateY(-20px) scale(0.95);
   }
   100% {
     opacity: 0;
-    transform: translateY(-60px) scale(0.7) rotate(0deg);
+    transform: translateY(-35px) scale(0.8);
   }
 }
 
-/* 收入数字发光效果 */
+/* 专注阶段 - 稳定上升动画 */
+@keyframes moneyRiseFocused {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.85);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.1);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(-18px) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.8);
+  }
+}
+
+/* 稳定阶段 - 标准上升动画 */
+@keyframes moneyRise {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.2);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-25px) scale(1.1);
+  }
+  80% {
+    opacity: 0.4;
+    transform: translateY(-45px) scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.7);
+  }
+}
+
+/* 下班冲刺阶段的狂欢特效动画 */
+@keyframes moneyRiseEuphoric {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.5);
+    filter: hue-rotate(0deg) brightness(1);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-8px) scale(1.4);
+    filter: hue-rotate(60deg) brightness(1.2);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-18px) scale(1.1);
+    filter: hue-rotate(120deg) brightness(1.4);
+  }
+  45% {
+    opacity: 0.9;
+    transform: translateY(-30px) scale(1.6);
+    filter: hue-rotate(180deg) brightness(1.6);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(-45px) scale(1.2);
+    filter: hue-rotate(240deg) brightness(1.4);
+  }
+  75% {
+    opacity: 0.6;
+    transform: translateY(-60px) scale(1.8);
+    filter: hue-rotate(300deg) brightness(1.2);
+  }
+  90% {
+    opacity: 0.3;
+    transform: translateY(-80px) scale(1.0);
+    filter: hue-rotate(360deg) brightness(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100px) scale(0.6);
+    filter: hue-rotate(360deg) brightness(0.8);
+  }
+}
+
+/* 终极爆发阶段的疯狂特效动画 */
+@keyframes moneyRiseExplosive {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.3);
+    filter: hue-rotate(0deg) brightness(2) saturate(2);
+    text-shadow: 0 0 10px #ff1744;
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-5px) scale(2.0);
+    filter: hue-rotate(120deg) brightness(2.5) saturate(2.5);
+    text-shadow: 0 0 20px #ff6d00;
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-12px) scale(1.5);
+    filter: hue-rotate(240deg) brightness(3) saturate(3);
+    text-shadow: 0 0 30px #ffea00;
+  }
+  30% {
+    opacity: 0.9;
+    transform: translateY(-20px) scale(2.5);
+    filter: hue-rotate(360deg) brightness(2.5) saturate(2.5);
+    text-shadow: 0 0 25px #76ff03;
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-35px) scale(1.8);
+    filter: hue-rotate(480deg) brightness(2) saturate(2);
+    text-shadow: 0 0 20px #00e5ff;
+  }
+  70% {
+    opacity: 0.6;
+    transform: translateY(-55px) scale(3.0);
+    filter: hue-rotate(600deg) brightness(2.5) saturate(2.5);
+    text-shadow: 0 0 35px #d500f9;
+  }
+  85% {
+    opacity: 0.4;
+    transform: translateY(-80px) scale(1.5);
+    filter: hue-rotate(720deg) brightness(1.5) saturate(1.5);
+    text-shadow: 0 0 15px #ff1744;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-120px) scale(0.5);
+    filter: hue-rotate(720deg) brightness(1) saturate(1);
+    text-shadow: 0 0 5px #ff1744;
+  }
+}
+
+/* 宝箱爆炸粒子动画 */
+@keyframes treasureExplosion {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 1;
+  }
+  20% {
+    transform: translate(calc(var(--end-x) * 0.3), calc(var(--end-y) * 0.3)) scale(1.2);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(calc(var(--end-x) * 0.8), calc(var(--end-y) * 0.8)) scale(1.0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(var(--end-x), var(--end-y)) scale(0.6);
+    opacity: 0;
+  }
+}
+
+/* 宝箱爆炸粒子基础样式 */
+.treasure-particle {
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+/* 宝箱爆炸震屏效果 */
+@keyframes treasureShake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2px, -1px); }
+  20% { transform: translate(2px, 1px); }
+  30% { transform: translate(-1px, 2px); }
+  40% { transform: translate(1px, -2px); }
+  50% { transform: translate(-2px, 1px); }
+  60% { transform: translate(2px, -1px); }
+  70% { transform: translate(-1px, -2px); }
+  80% { transform: translate(1px, 2px); }
+  90% { transform: translate(-2px, -1px); }
+}
+
+.treasure-explosion-container {
+  animation: treasureShake 0.5s ease-in-out;
+}
+
+/* 宝箱爆炸闪光效果 */
+@keyframes treasureFlash {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* 今日到手栏目的动态心情效果 */
+.today-box.calm {
+  background: linear-gradient(135deg, #f3f8fb, #e8f4f8);
+}
+
+.today-box.focused {
+  background: linear-gradient(135deg, #f3f8fb, #e8f4f8);
+  border-left: 3px solid #3ec6c1;
+}
+
+.today-box.steady {
+  background: linear-gradient(135deg, #f3f8fb, #eef6fd);
+  border-left: 3px solid #3ec6c1;
+  box-shadow: 0 2px 6px rgba(62,198,193,0.15);
+}
+
+.today-box.excited {
+  background: linear-gradient(135deg, #fff7e6, #ffeaa7);
+  border-left: 3px solid #ffb86c;
+  box-shadow: 0 2px 8px rgba(255,184,108,0.3);
+  animation: excitedPulse 2s ease-in-out infinite;
+}
+
+.today-box.euphoric {
+  background: linear-gradient(135deg, #ffe6e6, #fff2cc, #e6ffe6, #e6f7ff);
+  background-size: 200% 200%;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 4px 15px rgba(255,107,107,0.4);
+  animation: euphoricCelebration 1s ease-in-out infinite, rainbowBg 3s ease-in-out infinite;
+}
+
+.today-box.explosive {
+  background: linear-gradient(135deg, #ff1744, #ff6d00, #ffea00, #76ff03, #00e5ff, #d500f9);
+  background-size: 400% 400%;
+  border: 3px solid #ff1744;
+  box-shadow: 0 8px 40px rgba(255,23,68,0.8), 0 4px 20px rgba(255,235,0,0.6), 0 2px 10px rgba(0,229,255,0.4);
+  animation: explosiveCelebration 0.2s ease-in-out infinite, explosiveBg 0.8s ease-in-out infinite;
+  transform: scale(1.02);
+}
+
+@keyframes excitedPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes euphoricCelebration {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.03) rotate(0.5deg);
+  }
+  75% {
+    transform: scale(1.03) rotate(-0.5deg);
+  }
+}
+
+@keyframes rainbowBg {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 收入数字发光效果（根据心情状态动态调整） */
 .income-value {
   animation: glow 2s ease-in-out infinite alternate;
   text-shadow: 0 0 5px rgba(62,198,193,0.3);
+  transition: all 0.3s ease;
+}
+
+.income-value.excited {
+  animation: glowExcited 1.5s ease-in-out infinite alternate;
+  text-shadow: 0 0 8px rgba(255,184,108,0.6);
+}
+
+.income-value.euphoric {
+  animation: glowEuphoric 0.8s ease-in-out infinite alternate;
+  text-shadow: 0 0 12px rgba(255,107,107,0.8), 0 0 18px rgba(255,107,107,0.4);
+}
+
+.income-value.explosive {
+  animation: glowExplosive 0.3s ease-in-out infinite alternate;
+  text-shadow: 0 0 20px rgba(255,23,68,1), 0 0 30px rgba(255,235,0,0.8), 0 0 40px rgba(0,229,255,0.6);
+  color: #ff1744;
 }
 
 @keyframes glow {
@@ -142,18 +463,110 @@ h1 {
   }
 }
 
-/* 进度条彩虹效果增强 */
+@keyframes glowExcited {
+  from {
+    text-shadow: 0 0 8px rgba(255,184,108,0.6);
+    transform: scale(1);
+  }
+  to {
+    text-shadow: 0 0 15px rgba(255,184,108,0.9), 0 0 20px rgba(255,184,108,0.5);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes glowEuphoric {
+  from {
+    text-shadow: 0 0 12px rgba(255,107,107,0.8), 0 0 18px rgba(255,107,107,0.4);
+    transform: scale(1) rotate(-0.5deg);
+    color: #ff6b6b;
+  }
+  to {
+    text-shadow: 0 0 20px rgba(255,235,59,0.9), 0 0 25px rgba(102,187,106,0.6), 0 0 30px rgba(62,198,193,0.4);
+    transform: scale(1.05) rotate(0.5deg);
+    color: #ffeb3b;
+  }
+}
+
+/* 进度条基础样式 */
 .progress-bar {
+  height: 100%;
+  border-radius: 6px;
+  transition: all 0.5s ease;
+}
+
+/* 上班初期 - 单色进度条 */
+.progress-bar.calm {
+  background: #3ec6c1;
+  box-shadow: 0 1px 4px rgba(62,198,193,0.2);
+}
+
+/* 专注工作 - 单色带光效 */
+.progress-bar.focused {
+  background: #3ec6c1;
+  box-shadow: 0 2px 6px rgba(62,198,193,0.4);
+  animation: progressGlowCalm 4s ease-in-out infinite;
+}
+
+/* 稳定推进 - 双色渐变 */
+.progress-bar.steady {
   background: linear-gradient(90deg, 
-    #ff6b6b 0%, 
-    #ffa726 25%, 
-    #ffeb3b 50%, 
-    #66bb6a 75%, 
-    #3ec6c1 100%);
+    #3ec6c1 0%, 
+    #66bb6a 100%);
   box-shadow: 0 2px 8px rgba(62,198,193,0.3);
   animation: progressGlow 3s ease-in-out infinite;
 }
 
+/* 即将胜利 - 多色渐变 */
+.progress-bar.excited {
+  background: linear-gradient(90deg, 
+    #3ec6c1 0%, 
+    #66bb6a 30%, 
+    #ffeb3b 60%, 
+    #ffa726 100%);
+  box-shadow: 0 3px 12px rgba(255,184,108,0.5);
+  animation: progressGlowExcited 2s ease-in-out infinite;
+}
+
+/* 下班冲刺 - 彩虹滚动发光版 */
+.progress-bar.euphoric {
+  background: linear-gradient(90deg, 
+    #ff6b6b 0%, 
+    #ffa726 20%, 
+    #ffeb3b 40%, 
+    #66bb6a 60%, 
+    #3ec6c1 80%, 
+    #ff6b6b 100%);
+  background-size: 200% 100%;
+  box-shadow: 0 4px 20px rgba(255,107,107,0.7), 0 2px 10px rgba(255,235,59,0.5);
+  animation: progressGlowEuphoric 1s ease-in-out infinite, rainbowFlow 3s linear infinite;
+}
+
+/* 终极爆发 - 疯狂闪烁版 */
+.progress-bar.explosive {
+  background: linear-gradient(90deg, 
+    #ff1744 0%, 
+    #ff6d00 15%, 
+    #ffea00 30%, 
+    #76ff03 45%, 
+    #00e5ff 60%, 
+    #d500f9 75%, 
+    #ff1744 100%);
+  background-size: 300% 100%;
+  box-shadow: 0 6px 30px rgba(255,23,68,0.9), 0 3px 15px rgba(255,235,0,0.7), 0 1px 8px rgba(0,229,255,0.5);
+  animation: progressGlowExplosive 0.3s ease-in-out infinite, rainbowFlowFast 1s linear infinite;
+}
+
+/* 平静阶段的轻微光效 */
+@keyframes progressGlowCalm {
+  0%, 100% {
+    box-shadow: 0 2px 6px rgba(62,198,193,0.4);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(62,198,193,0.6);
+  }
+}
+
+/* 稳定阶段的双色光效 */
 @keyframes progressGlow {
   0%, 100% {
     box-shadow: 0 2px 8px rgba(62,198,193,0.3);
@@ -163,9 +576,142 @@ h1 {
   }
 }
 
-/* 今日收入数字跳动 */
+@keyframes progressGlowExcited {
+  0%, 100% {
+    box-shadow: 0 3px 12px rgba(255,184,108,0.5);
+  }
+  50% {
+    box-shadow: 0 4px 18px rgba(255,184,108,0.8), 0 2px 8px rgba(255,184,108,0.4);
+  }
+}
+
+@keyframes progressGlowEuphoric {
+  0% {
+    box-shadow: 0 4px 20px rgba(255,107,107,0.7), 0 2px 10px rgba(255,235,59,0.5);
+  }
+  25% {
+    box-shadow: 0 4px 20px rgba(255,235,59,0.7), 0 2px 10px rgba(102,187,106,0.5);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(102,187,106,0.7), 0 2px 10px rgba(62,198,193,0.5);
+  }
+  75% {
+    box-shadow: 0 4px 20px rgba(62,198,193,0.7), 0 2px 10px rgba(255,107,107,0.5);
+  }
+  100% {
+    box-shadow: 0 4px 20px rgba(255,107,107,0.7), 0 2px 10px rgba(255,235,59,0.5);
+  }
+}
+
+/* 彩虹滚动动画 */
+@keyframes rainbowFlow {
+  0% {
+    background-position: 200% 0%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+/* 快速彩虹滚动动画 */
+@keyframes rainbowFlowFast {
+  0% {
+    background-position: 300% 0%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+/* 终极爆发进度条光效 */
+@keyframes progressGlowExplosive {
+  0% {
+    box-shadow: 0 6px 30px rgba(255,23,68,0.9), 0 3px 15px rgba(255,235,0,0.7), 0 1px 8px rgba(0,229,255,0.5);
+  }
+  50% {
+    box-shadow: 0 8px 40px rgba(255,23,68,1), 0 4px 20px rgba(255,235,0,0.9), 0 2px 12px rgba(0,229,255,0.7);
+  }
+  100% {
+    box-shadow: 0 6px 30px rgba(255,23,68,0.9), 0 3px 15px rgba(255,235,0,0.7), 0 1px 8px rgba(0,229,255,0.5);
+  }
+}
+
+/* 终极爆发收入数字光效 */
+@keyframes glowExplosive {
+  from {
+    text-shadow: 0 0 20px rgba(255,23,68,1), 0 0 30px rgba(255,235,0,0.8), 0 0 40px rgba(0,229,255,0.6);
+    transform: scale(1) rotate(-1deg);
+  }
+  to {
+    text-shadow: 0 0 30px rgba(255,23,68,1), 0 0 45px rgba(255,235,0,1), 0 0 60px rgba(0,229,255,0.8);
+    transform: scale(1.08) rotate(1deg);
+  }
+}
+
+/* 终极爆发今日到手动画 */
+@keyframes pulseExplosive {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.15) rotate(-3deg);
+  }
+  75% {
+    transform: scale(1.15) rotate(3deg);
+  }
+}
+
+/* 终极爆发背景庆祝动画 */
+@keyframes explosiveCelebration {
+  0%, 100% {
+    transform: scale(1.02) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.05) rotate(1deg);
+  }
+}
+
+@keyframes explosiveBg {
+  0% {
+    background-position: 0% 50%;
+  }
+  25% {
+    background-position: 100% 25%;
+  }
+  50% {
+    background-position: 200% 75%;
+  }
+  75% {
+    background-position: 300% 25%;
+  }
+  100% {
+    background-position: 400% 50%;
+  }
+}
+
+/* 今日收入数字跳动（根据心情状态调整） */
 .today-value {
   animation: pulse 1.5s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.today-value.excited {
+  animation: pulseExcited 1s ease-in-out infinite;
+  text-shadow: 0 0 8px rgba(255,184,108,0.6);
+  color: #ff9f43;
+}
+
+.today-value.euphoric {
+  animation: pulseEuphoric 0.6s ease-in-out infinite;
+  text-shadow: 0 0 15px rgba(255,107,107,0.8), 0 0 20px rgba(255,235,59,0.6);
+  color: #ff6b6b;
+}
+
+.today-value.explosive {
+  animation: pulseExplosive 0.2s ease-in-out infinite;
+  text-shadow: 0 0 25px rgba(255,23,68,1), 0 0 35px rgba(255,235,0,0.9), 0 0 45px rgba(0,229,255,0.7);
+  color: #ff1744;
+  font-weight: 900;
 }
 
 @keyframes pulse {
@@ -174,5 +720,26 @@ h1 {
   }
   50% {
     transform: scale(1.05);
+  }
+}
+
+@keyframes pulseExcited {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08) rotate(1deg);
+  }
+}
+
+@keyframes pulseEuphoric {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.12) rotate(-2deg);
+  }
+  75% {
+    transform: scale(1.12) rotate(2deg);
   }
 }
