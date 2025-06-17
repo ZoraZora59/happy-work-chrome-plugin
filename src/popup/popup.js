@@ -9,20 +9,53 @@ document.addEventListener('DOMContentLoaded', function () {
   const setIncomeBtn = document.getElementById('setIncomeBtn');
   const overtimeBtn = document.getElementById('overtimeBtn');
 
-
-  let lastIncome = 0;
   let currentRefreshInterval = null;
-  let baseIncome = 0; // 基础收入（按秒计算的准确值）
-  let displayIncome = 0; // 显示用的收入（平滑增长）
-  let lastUpdateTime = Date.now(); // 上次更新时间
-  let lastSaveTime = 0; // 上次保存显示收入的时间
+  let displayIncome = 0; // 用于平滑动画的显示收入
+  let lastUpdateTime = Date.now(); // 上次动画更新时间
+  let workState = null; // 在内存中维护的工作状态
+  let lastSaveTime = 0; // 上次保存状态到硬盘的时间
 
   // 点击设置按钮跳转到设置页面
   setIncomeBtn.onclick = function () {
     chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/settings.html') });
   };
 
+  // 获取并初始化工作状态
+  async function initializeWorkState() {
+    const today = new Date().toLocaleDateString();
+    // 优先从 local 读取
+    let data = await chrome.storage.local.get('workState');
+    let loadedState = data.workState;
 
+    // 兼容旧版，如果 local 没有，从 sync 读取
+    if (!loadedState) {
+        const syncResult = await chrome.storage.sync.get('workState');
+        loadedState = syncResult.workState;
+    }
+
+    if (!loadedState || loadedState.date !== today) {
+      // 新的一天，重置状态
+      workState = {
+        date: today,
+        baseIncome: 0,
+        lastUpdateTime: Date.now()
+      };
+      // 立即保存一次初始状态
+      await chrome.storage.local.set({ workState });
+      await chrome.storage.sync.set({ workState });
+      lastSaveTime = Date.now();
+    } else {
+        workState = loadedState;
+    }
+    
+    // 从恢复的状态初始化
+    if (workState) {
+        displayIncome = workState.baseIncome;
+        lastUpdateTime = workState.lastUpdateTime;
+    }
+
+    startUpdateLoop();
+  }
 
   // 计算工作时长（分钟），排除休息时间
   function calculateWorkMinutes(workStart, workEnd, breaks) {
@@ -251,29 +284,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // 数字跳动动画
   function animateValue(element, start, end, duration = 500) {
-    const startTime = performance.now();
-    const startVal = parseFloat(start) || 0;
-    const endVal = parseFloat(end) || 0;
-    const diff = endVal - startVal;
-    
-    function updateValue(currentTime) {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      // 使用缓动函数让动画更自然
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      const currentVal = startVal + (diff * easeOut);
-      
-      // 获取币种符号
-      const currency = element.textContent.charAt(0);
-      element.textContent = `${currency}${currentVal.toFixed(2)}`;
-      
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      element.textContent = `¥${(progress * (end - start) + start).toFixed(2)}`;
       if (progress < 1) {
-        requestAnimationFrame(updateValue);
+        window.requestAnimationFrame(step);
+      } else {
+        element.textContent = `¥${end.toFixed(2)}`;
       }
-    }
-    
-    requestAnimationFrame(updateValue);
+    };
+    window.requestAnimationFrame(step);
   }
 
   // 添加金钱增长特效（独立的特效系统，根据工作进度动态调整）
@@ -467,331 +489,204 @@ document.addEventListener('DOMContentLoaded', function () {
     }, cleanupTime);
   }
 
-  // 更新收入显示（增强版）
-  // 注意：这个函数处理两个独立的系统：
-  // 1. 实时收入显示（¥xxxxx）- 严格按用户设置的刷新频率更新
-  // 2. 金钱特效（+¥xx.xx）- 有独立的智能显示逻辑，不完全依赖刷新频率
-  function updateIncomeEnhanced() {
-    chrome.storage.sync.get(['incomeSettings', 'displayIncomeState', 'isAfterWorkOvertime'], function (result) {
-      const settings = result.incomeSettings;
-      const isZenMode = settings?.zenMode || false;
-      
-      if (!settings || !settings.salary) {
-        incomeValue.textContent = '¥0.00';
-        todayValue.textContent = '¥0.00';
-        incomeDesc.textContent = '请先设置收入信息';
-        progressBar.style.width = '0%';
-        incomePercent.textContent = '0%';
-        countdown.textContent = '00:00:00';
-        countdownLabel.textContent = '请先设置收入信息';
+  // 核心：更新收入和UI
+  async function updateIncomeEnhanced() {
+    // 从 sync 存储中获取收入设置
+    let { incomeSettings } = await chrome.storage.sync.get('incomeSettings');
+    // 为了方便，后续统一使用 settings 变量
+    const settings = incomeSettings;
+
+    if (!workState) {
+        // 如果状态还未初始化，则不执行任何操作
         return;
-      }
-
-      const monthlySalary = parseFloat(settings.salary);
-      const workDays = settings.workDays || [1, 2, 3, 4, 5]; // 默认周一到周五
-      const overtimeSettings = settings.overtimeSettings || {};
-      const workStart = settings.workStart || '09:00';
-      const workEnd = settings.workEnd || '18:00';
-      const breaks = settings.breaks || [];
-      
-      // 计算当月实际工作天数
-      const { totalWorkDays, totalOvertimeDays } = getMonthlyWorkDays(workDays, overtimeSettings);
-      
-      // 计算每日工作时长
-      const dailyWorkMinutes = calculateWorkMinutes(workStart, workEnd, breaks);
-      const dailyWorkSeconds = dailyWorkMinutes * 60;
-      const dailyWorkHours = dailyWorkMinutes / 60;
-      
-      // 计算日薪和时薪
-      const totalEffectiveWorkDays = totalWorkDays + totalOvertimeDays;
-      const dailySalary = monthlySalary / totalEffectiveWorkDays;
-      
-      // 判断今天是什么类型的日子
-      const todayWorkInfo = getTodayWorkType(workDays, overtimeSettings);
-      
-      // 检查是否在加班状态
-      const isAfterWorkOvertime = result.isAfterWorkOvertime || false;
-      
-      // 计算当前已工作时长（秒级精度）
-      const workData = getWorkedSeconds(workStart, workEnd, breaks, isAfterWorkOvertime);
-      const normalSeconds = workData.normalSeconds;
-      const afterWorkSeconds = workData.afterWorkSeconds;
-      
-      // 计算正常工作时间的时薪（不包含加班倍数，因为今日工资不包含下班后加班费）
-      const normalHourlyRate = dailySalary / dailyWorkHours;
-      const normalSecondRate = normalHourlyRate / 3600;
-      
-      // 计算正常工作时间的收入
-      const normalIncome = normalSeconds * normalSecondRate;
-      
-      // 计算下班后加班收入（如果有的话）
-      let afterWorkIncome = 0;
-      if (afterWorkSeconds > 0 && todayWorkInfo.afterWorkMultiplier) {
-        const afterWorkHourlyRate = normalHourlyRate * todayWorkInfo.afterWorkMultiplier;
-        const afterWorkSecondRate = afterWorkHourlyRate / 3600;
-        afterWorkIncome = afterWorkSeconds * afterWorkSecondRate;
-      }
-      
-      const currentIncome = normalIncome + afterWorkIncome;
-      const totalWorkedSeconds = normalSeconds + afterWorkSeconds;
-      
-
-      // 计算进度百分比（基于正常工作时间，不包括下班后加班）
-      const progressPercent = Math.min(100, (normalSeconds / dailyWorkSeconds) * 100);
-      
-      // 更新显示 - 创建平滑连续的收入增长效果
-      const currency = settings.displayCurrency === 'USD' ? '$' : 
-                     settings.displayCurrency === 'EUR' ? '€' : '¥';
-      
-      const now = Date.now();
-      const timeDelta = (now - lastUpdateTime) / 1000; // 时间差（秒）
-      
-      // 从存储中恢复显示收入状态
-      const displayState = result.displayIncomeState;
-      const todayStr = new Date().toDateString();
-      
-             if (displayState && displayState.date === todayStr && displayState.income > 0) {
-        // 如果是同一天的数据且有效，使用保存的显示收入
-        if (displayIncome === 0) {
-          displayIncome = Math.min(displayState.income, currentIncome);
-        }
-      } else {
-        // 新的一天或没有保存数据，重新开始
-        displayIncome = currentIncome;
-      }
-      
-      // 判断当前是否在工作时间内（只有当前正在工作时收入才应该增长）
-      const isCurrentlyWorking = isCurrentlyInWorkTime(workStart, workEnd, breaks, isAfterWorkOvertime);
-      
-      // 如果当前正在工作时间内，让显示收入平滑增长
-      if (isCurrentlyWorking && totalWorkedSeconds > 0) {
-        // 计算这段时间应该增加的收入（综合正常工作和加班）
-        let incomeIncrease = 0;
-        if (normalSeconds > 0) {
-          incomeIncrease += normalSecondRate * timeDelta;
-        }
-        if (afterWorkSeconds > 0 && todayWorkInfo.afterWorkMultiplier) {
-          const afterWorkHourlyRate = normalHourlyRate * todayWorkInfo.afterWorkMultiplier;
-          const afterWorkSecondRate = afterWorkHourlyRate / 3600;
-          incomeIncrease += afterWorkSecondRate * timeDelta;
-        }
-        displayIncome += incomeIncrease;
-        
-        // 确保显示收入不超过实际计算的收入
-        if (displayIncome > currentIncome) {
-          displayIncome = currentIncome;
-        }
-        
-        // 更新显示（工作时间内显示两位小数）
-        incomeValue.textContent = `${currency}${displayIncome.toFixed(2)}`;
-        
-        // 添加金钱特效（根据心情状态智能调整频率和概率，佛系模式下禁用）
-        if (incomeIncrease > 0.001 && !isZenMode && isCurrentlyWorking) { // 佛系模式下不显示特效，且必须当前正在工作
-          const moodState = getWorkMoodState(progressPercent);
-          
-          // 基础概率计算（根据金额大小）
-          let baseProbability = 0;
-          if (incomeIncrease >= 0.5) {
-            baseProbability = 0.3;
-          } else if (incomeIncrease >= 0.1) {
-            baseProbability = 0.15;
-          } else if (incomeIncrease >= 0.05) {
-            baseProbability = 0.08;
-          } else if (incomeIncrease >= 0.01) {
-            baseProbability = 0.04;
-          } else {
-            baseProbability = 0.01; // 很小的金额也有机会
-          }
-          
-          // 根据心情状态调整特效概率
-          let finalProbability = baseProbability * moodState.effectMultiplier;
-          
-          // 为不同心情阶段添加额外的触发机制
-          if (moodState.mood === 'excited') {
-            // 即将胜利阶段：额外30%概率触发
-            finalProbability += 0.3;
-          } else if (moodState.mood === 'euphoric') {
-            // 下班冲刺阶段：额外50%概率触发
-            finalProbability += 0.5;
-          } else if (moodState.mood === 'explosive') {
-            // 终极爆发阶段：几乎每次都触发，并且有连击效果
-            finalProbability += 0.8;
-            
-            // 终极爆发阶段的连击效果：有30%概率触发额外特效
-            if (Math.random() < 0.3) {
-              setTimeout(() => {
-                addMoneyEffect(incomeIncrease * 0.5, progressPercent);
-              }, 100);
-            }
-            if (Math.random() < 0.2) {
-              setTimeout(() => {
-                addMoneyEffect(incomeIncrease * 0.3, progressPercent);
-              }, 200);
-            }
-          }
-          
-          // 确保概率不超过1
-          finalProbability = Math.min(finalProbability, 1);
-          
-          if (Math.random() < finalProbability) {
-            addMoneyEffect(incomeIncrease, progressPercent);
-          }
-        }
-      } else {
-        // 不在当前工作时间，保持显示收入不变（避免下班后收入回退）
-        if (displayIncome === 0 || displayIncome < currentIncome) {
-          displayIncome = currentIncome;
-        }
-        // 下班后显示两位小数，但在计算今日收入一致性时会处理
-        incomeValue.textContent = `${currency}${displayIncome.toFixed(2)}`;
-      }
-      
-             lastUpdateTime = now;
-       
-       // 每5秒保存一次显示收入状态到存储，避免过于频繁
-       // 只有在工作时间内或收入确实发生变化时才保存
-       if (now - lastSaveTime > 5000 && (isCurrentlyWorking || displayIncome !== lastIncome)) {
-         chrome.storage.sync.set({
-           displayIncomeState: {
-             date: todayStr,
-             income: displayIncome,
-             timestamp: now,
-             isCurrentlyWorking: isCurrentlyWorking
-           }
-         });
-         lastSaveTime = now;
-       }
-       
-       // 进度条平滑更新
-       progressBar.style.transition = 'width 0.1s linear';
-       
-       lastIncome = currentIncome;
-      
-      // 显示今日收入 - 根据是否下班选择显示预期收入还是实际收入
-      let todayDisplayIncome;
-      let todayIncomeLabel = '今日到手';
-      
-             if (progressPercent >= 100 || !isCurrentlyWorking) {
-         // 已下班或不在工作时间：显示实际收入，确保与实时收入一致
-         todayDisplayIncome = currentIncome;
-         todayIncomeLabel = '今日实收';
-       } else {
-        // 工作时间内：显示预期全天收入
-        todayDisplayIncome = dailySalary;
-        if (todayWorkInfo.type === 'holiday' || todayWorkInfo.type === 'weekend') {
-          todayDisplayIncome = dailySalary * todayWorkInfo.multiplier;
-        }
-        todayIncomeLabel = '今日到手';
-      }
-      
-      // 更新今日收入标签和数值
-      const todayLabel = document.querySelector('.today-label');
-      if (todayLabel) {
-        todayLabel.textContent = todayIncomeLabel;
-      }
-             // 显示今日收入，使用合理的格式
-       if (progressPercent >= 100 || !isCurrentlyWorking) {
-         // 下班后：两个金额都显示整数，保持一致
-         todayValue.textContent = `${currency}${Math.round(todayDisplayIncome)}`;
-         // 同时更新实时收入为整数格式以保持一致
-         incomeValue.textContent = `${currency}${Math.round(displayIncome)}`;
-       } else {
-         // 工作时间内：今日预期显示整数，实时收入显示小数
-         todayValue.textContent = `${currency}${Math.round(todayDisplayIncome)}`;
-       }
-      progressBar.style.width = `${progressPercent}%`;
-      incomePercent.textContent = `${Math.round(progressPercent)}%`;
-      
-      // 根据用户设置的价值衡量计算
-      let valueText = '';
-      const valueItem = settings.valueItem || 'burger';
-      
-      if (valueItem === 'cola') {
-        const count = Math.floor(currentIncome / 3);
-        valueText = `约等于 ${count} 瓶可乐`;
-      } else if (valueItem === 'chicken') {
-        const count = Math.floor(currentIncome / 14);
-        valueText = `约等于 ${count} 个辣翅`;
-      } else if (valueItem === 'burger') {
-        const count = Math.floor(currentIncome / 28);
-        valueText = `约等于 ${count} 个巨无霸`;
-      } else if (valueItem === 'custom' && settings.customItemName && settings.customItemPrice) {
-        const count = Math.floor(currentIncome / parseFloat(settings.customItemPrice));
-        valueText = `约等于 ${count} 个${settings.customItemName}`;
-      } else {
-        // 默认显示
-        const count = Math.floor(currentIncome / 28);
-        valueText = `约等于 ${count} 个巨无霸`;
-      }
-      
-      // 根据工作类型显示不同提示
-      if (todayWorkInfo.type === 'off') {
-        incomeDesc.textContent = '今天是休息日，好好放松吧！';
-      } else if (todayWorkInfo.type === 'holiday') {
-        incomeDesc.textContent = `节假日加班 (${todayWorkInfo.multiplier}倍薪资) ${valueText}`;
-      } else if (todayWorkInfo.type === 'weekend') {
-        incomeDesc.textContent = `休息日加班 (${todayWorkInfo.multiplier}倍薪资) ${valueText}`;
-      } else if (todayWorkInfo.afterWorkMultiplier && afterWorkSeconds > 0) {
-        incomeDesc.textContent = valueText;
-      } else {
-        incomeDesc.textContent = valueText;
-      }
-      
-      // 更新倒计时和标签
-      const countdownText = getCountdown(workEnd);
-      
-      // 根据不同状态显示不同的标签和内容
-      if (todayWorkInfo.type === 'off') {
-        countdownLabel.textContent = '今天是休息日';
-        countdown.textContent = '好好放松吧';
-      } else if (countdownText === '00:00:00' && progressPercent >= 100) {
-        if (isAfterWorkOvertime && afterWorkSeconds > 0) {
-          countdownLabel.textContent = '已下班，正在加班';
-          const afterWorkHours = Math.floor(afterWorkSeconds / 3600);
-          const afterWorkMins = Math.floor((afterWorkSeconds % 3600) / 60);
-          countdown.textContent = `已加班 ${afterWorkHours.toString().padStart(2, '0')}:${afterWorkMins.toString().padStart(2, '0')}`;
-        } else {
-          countdownLabel.textContent = '今日工作已完成';
-          countdown.textContent = '下班快乐！';
-        }
-      } else if (progressPercent >= 95) {
-        countdownLabel.textContent = '马上就要下班啦！';
-        countdown.textContent = countdownText;
-      } else if (progressPercent >= 80) {
-        countdownLabel.textContent = '距离下班还有';
-        countdown.textContent = countdownText;
-      } else if (progressPercent >= 50) {
-        countdownLabel.textContent = '今日进度过半，加油';
-        countdown.textContent = countdownText;
-      } else if (progressPercent >= 20) {
-        countdownLabel.textContent = '稳步推进中';
-        countdown.textContent = countdownText;
-      } else {
-        countdownLabel.textContent = '新的一天开始了';
-        countdown.textContent = countdownText;
-      }
-      
-      // 更新加班按钮显示状态
-      updateOvertimeButtonVisibility(todayWorkInfo, normalSeconds, dailyWorkSeconds);
-      
-      // 更新心情状态显示（考虑加班状态和佛系模式）
-      updateMoodDisplay(progressPercent, isAfterWorkOvertime && afterWorkSeconds > 0, isZenMode);
-      
-      // 终极爆发阶段的特殊效果（降低频率避免卡顿，佛系模式下禁用，下班后不触发）
-      if (progressPercent >= 95 && progressPercent < 100 && !isZenMode && isCurrentlyWorking) {
-        // 降低金钱雨触发概率，减少性能消耗
-        if (Math.random() < 0.02) { // 从0.075降低到0.02
-          triggerMoneyRain(progressPercent);
-        }
-        // 降低宝箱爆炸特效触发概率
-        if (Math.random() < 0.015) { // 从0.045降低到0.015
-          triggerTreasureExplosion(progressPercent);
-        }
-      }
-    });
     }
-  
-  // 金钱雨特效（终极爆发阶段专用，优化性能）
+
+    if (!settings || !settings.salary) {
+      incomeValue.textContent = '请设置收入';
+      todayValue.textContent = '¥0.00';
+      incomeDesc.textContent = '请先设置收入信息';
+      progressBar.style.width = '0%';
+      incomePercent.textContent = '0%';
+      countdown.textContent = '00:00:00';
+      return;
+    }
+
+    const today = new Date().toLocaleDateString();
+    if (workState.date !== today) {
+      // 如果日期变化（例如跨天），重新初始化
+      await initializeWorkState();
+      return;
+    }
+    
+    // 使用 settings 对象中正确的、扁平化的属性结构
+    const monthlyIncome = parseFloat(settings.salary);
+    const workDays = settings.workDays || [1, 2, 3, 4, 5];
+    const workStart = settings.workStart || '09:00';
+    const workEnd = settings.workEnd || '18:00';
+    const breaks = settings.breaks || [];
+    const overtimeSettings = settings.overtimeSettings || {};
+    const zenMode = settings.zenMode || false;
+    const valueItem = settings.valueItem || 'chicken';
+    const customItemName = settings.customItemName || '自定义';
+    const customItemPrice = settings.customItemPrice || 999;
+
+
+    const todayWorkInfo = getTodayWorkType(workDays, overtimeSettings);
+    const isOvertimeActive = overtimeBtn.classList.contains('active');
+    const isCurrentlyWorkingCheck = isCurrentlyInWorkTime(workStart, workEnd, breaks, isOvertimeActive);
+
+    if (todayWorkInfo.type === 'off' && !isCurrentlyWorkingCheck) {
+      incomeValue.textContent = "休息日";
+      progressBar.style.width = '0%';
+      incomePercent.textContent = '0%';
+      todayValue.textContent = '¥0.00';
+      incomeDesc.textContent = '今天是休息日，好好放松吧！';
+      countdownLabel.textContent = '今天是休息日';
+      countdown.textContent = '好好放松吧';
+      return;
+    }
+    
+    // 计算总工作秒数
+    const dailyWorkMinutes = calculateWorkMinutes(workStart, workEnd, breaks);
+    const dailyWorkSeconds = dailyWorkMinutes * 60;
+
+    // 计算每秒收入
+    const { totalWorkDays, totalOvertimeDays } = getMonthlyWorkDays(workDays, overtimeSettings);
+    const totalEquivalentWorkDays = totalWorkDays + totalOvertimeDays;
+    const dailyIncome = totalEquivalentWorkDays > 0 ? monthlyIncome / totalEquivalentWorkDays : 0;
+    const incomePerSecond = dailyWorkSeconds > 0 ? dailyIncome / dailyWorkSeconds : 0;
+    
+    // 获取当前已工作秒数
+    const { normalSeconds, afterWorkSeconds } = getWorkedSeconds(workStart, workEnd, breaks, isOvertimeActive);
+    
+    // 计算准确的基础收入
+    let currentBaseIncome = normalSeconds * incomePerSecond * todayWorkInfo.multiplier;
+    if (afterWorkSeconds > 0 && todayWorkInfo.afterWorkMultiplier) {
+      currentBaseIncome += afterWorkSeconds * incomePerSecond * todayWorkInfo.afterWorkMultiplier;
+    }
+
+    // 平滑更新显示收入
+    const now = Date.now();
+    lastUpdateTime = now;
+    
+    // 如果弹窗是重新打开，displayIncome 需要被设置为当前实际收入，以避免从0开始跳动
+    if (displayIncome < currentBaseIncome) {
+        displayIncome = currentBaseIncome;
+    }
+
+    // 更新UI - 实时收入
+    const previousDisplayIncome = parseFloat(incomeValue.textContent.replace('¥', '')) || displayIncome;
+    animateValue(incomeValue, previousDisplayIncome, displayIncome, 500);
+    
+    const progressPercent = dailyWorkSeconds > 0 ? (normalSeconds / dailyWorkSeconds) * 100 : 0;
+    progressBar.style.width = `${Math.min(100, progressPercent)}%`;
+    incomePercent.textContent = `${Math.min(100, progressPercent).toFixed(0)}%`;
+    
+    // 更新UI - 今日收入
+    let todayDisplayIncome;
+    let todayIncomeLabel = '今日到手';
+    if (progressPercent >= 100 || !isCurrentlyWorkingCheck) {
+      todayDisplayIncome = currentBaseIncome;
+      todayIncomeLabel = '今日实收';
+    } else {
+      todayDisplayIncome = dailyIncome * todayWorkInfo.multiplier;
+    }
+    document.querySelector('.today-label').textContent = todayIncomeLabel;
+    todayValue.textContent = `¥${Math.round(todayDisplayIncome)}`;
+
+    // 更新UI - 价值描述
+    let valueText = '';
+    
+    if (valueItem === 'cola') {
+      const count = Math.floor(currentBaseIncome / 3);
+      valueText = `约等于 ${count} 瓶可乐`;
+    } else if (valueItem === 'chicken') {
+      const count = Math.floor(currentBaseIncome / 14);
+      valueText = `约等于 ${count} 个辣翅`;
+    } else if (valueItem === 'burger') {
+        const count = Math.floor(currentBaseIncome / 28);
+        valueText = `约等于 ${count} 个巨无霸`;
+    } else if (valueItem === 'custom') {
+      const count = Math.floor(currentBaseIncome / parseFloat(customItemPrice));
+      valueText = `约等于 ${count} 个${customItemName}`;
+    }
+    incomeDesc.textContent = valueText;
+
+
+    // 更新UI - 倒计时
+    const countdownText = getCountdown(workEnd);
+    if (progressPercent >= 100 && !isOvertimeActive) {
+        countdownLabel.textContent = '今日工作已完成';
+        countdown.textContent = '下班快乐！';
+    } else if (isOvertimeActive) {
+        countdownLabel.textContent = '已下班，正在加班';
+        const afterWorkHours = Math.floor(afterWorkSeconds / 3600);
+        const afterWorkMins = Math.floor((afterWorkSeconds % 3600) / 60);
+        countdown.textContent = `+${afterWorkHours.toString().padStart(2, '0')}:${afterWorkMins.toString().padStart(2, '0')}`;
+    } else {
+        countdownLabel.textContent = '距离下班';
+        countdown.textContent = countdownText;
+    }
+    
+    // 其他UI更新
+    updateMoodDisplay(progressPercent, afterWorkSeconds > 0, zenMode);
+    
+    const incomeIncreaseSinceLastTick = currentBaseIncome - (workState.baseIncome || 0);
+    if (incomeIncreaseSinceLastTick > 0.001 && !zenMode && isCurrentlyWorkingCheck) {
+        const moodState = getWorkMoodState(progressPercent);
+        
+        // 基础概率计算（根据金额大小）
+        let baseProbability = 0;
+        if (incomeIncreaseSinceLastTick >= 0.5) {
+          baseProbability = 0.3;
+        } else if (incomeIncreaseSinceLastTick >= 0.1) {
+          baseProbability = 0.15;
+        } else if (incomeIncreaseSinceLastTick >= 0.05) {
+          baseProbability = 0.08;
+        } else if (incomeIncreaseSinceLastTick >= 0.01) {
+          baseProbability = 0.04;
+        } else {
+          baseProbability = 0.01;
+        }
+        
+        // 根据心情状态调整特效概率
+        let finalProbability = baseProbability * moodState.effectMultiplier;
+        
+        // 为不同心情阶段添加额外的触发机制
+        if (moodState.mood === 'excited') {
+          finalProbability += 0.3;
+        } else if (moodState.mood === 'euphoric') {
+          finalProbability += 0.5;
+        } else if (moodState.mood === 'explosive') {
+          finalProbability += 0.8;
+          if (Math.random() < 0.3) {
+            setTimeout(() => addMoneyEffect(incomeIncreaseSinceLastTick * 0.5, progressPercent), 100);
+          }
+          if (Math.random() < 0.2) {
+            setTimeout(() => addMoneyEffect(incomeIncreaseSinceLastTick * 0.3, progressPercent), 200);
+          }
+        }
+        
+        finalProbability = Math.min(finalProbability, 1);
+        
+        if (Math.random() < finalProbability) {
+          addMoneyEffect(incomeIncreaseSinceLastTick, progressPercent);
+        }
+    }
+    
+    // 实时更新内存中的状态，用于下一次计算
+    workState.baseIncome = currentBaseIncome;
+    workState.lastUpdateTime = now;
+
+    // 节流：每5秒才将内存中的状态保存到硬盘
+    if (now - lastSaveTime > 5000) {
+        await chrome.storage.local.set({ workState });
+        // 同时写入 sync 兼容旧版
+        await chrome.storage.sync.set({ workState });
+        lastSaveTime = now;
+    }
+  }
+
   function triggerMoneyRain(progressPercent) {
     const rainCount = 3 + Math.floor(Math.random() * 4); // 减少到3-6个特效
     const baseAmounts = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0];
@@ -804,7 +699,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
   
-  // 开宝箱式爆炸特效（终极爆发阶段专用）
   function triggerTreasureExplosion(progressPercent) {
     const container = document.querySelector('.income-box');
     if (!container) return;
@@ -900,7 +794,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
   
-  // 更新加班按钮显示状态
   function updateOvertimeButtonVisibility(todayWorkInfo, normalSeconds, dailyWorkSeconds) {
     if (!overtimeBtn) return;
     
@@ -921,7 +814,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // 更新心情状态显示
   function updateMoodDisplay(progressPercent, isInAfterWorkOvertime = false, isZenMode = false) {
     let moodState;
     
@@ -997,73 +889,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
   
-  // 启动更新循环，动态调整刷新频率
-  let isHighPerformanceMode = false;
-  
+  // 启动更新循环
   function startUpdateLoop() {
-    // 清除之前的定时器
     if (currentRefreshInterval) {
       clearInterval(currentRefreshInterval);
     }
-    
-    // 根据心情状态动态调整刷新频率
-    function adaptiveUpdate() {
-      chrome.storage.sync.get(['incomeSettings'], function(result) {
-        const settings = result.incomeSettings;
-        if (!settings) return;
-        
-        const workStart = settings.workStart || '09:00';
-        const workEnd = settings.workEnd || '18:00';
-        const breaks = settings.breaks || [];
-        const dailyWorkMinutes = calculateWorkMinutes(workStart, workEnd, breaks);
-        const dailyWorkSeconds = dailyWorkMinutes * 60;
-        const workData = getWorkedSeconds(workStart, workEnd, breaks, false);
-        const progressPercent = Math.min(100, (workData.normalSeconds / dailyWorkSeconds) * 100);
-        
-        // 在爆发阶段降低刷新频率以提升性能
-        let updateInterval = 100; // 默认100ms
-        if (progressPercent >= 95) {
-          updateInterval = 200; // 爆发阶段降低到200ms
-          isHighPerformanceMode = true;
-        } else if (progressPercent >= 80) {
-          updateInterval = 150; // 狂欢阶段150ms
-          isHighPerformanceMode = false;
-        } else {
-          isHighPerformanceMode = false;
-        }
-        
-        clearInterval(currentRefreshInterval);
-        currentRefreshInterval = setInterval(updateIncomeEnhanced, updateInterval);
-      });
-    }
-    
-    // 初始设置
-    adaptiveUpdate();
-    // 每30秒重新评估一次刷新频率
-    setInterval(adaptiveUpdate, 30000);
-  }
-
-  // 设置收入按钮点击事件
-  if (setIncomeBtn) {
-    setIncomeBtn.addEventListener('click', function() {
-      window.open(chrome.runtime.getURL('src/popup/settings.html'), '_blank');
-    });
-  }
-
-  // 加班按钮点击事件
-  if (overtimeBtn) {
-    overtimeBtn.addEventListener('click', function() {
-      chrome.storage.sync.get(['isAfterWorkOvertime'], function(result) {
-        const currentState = result.isAfterWorkOvertime || false;
-        const newState = !currentState;
-        
-        chrome.storage.sync.set({ isAfterWorkOvertime: newState }, function() {
-          updateOvertimeButton(newState);
-          // 立即更新收入显示，以便心情状态立即生效
-          updateIncomeEnhanced();
-        });
-      });
-    });
+    updateIncomeEnhanced(); // 立即执行一次
+    currentRefreshInterval = setInterval(updateIncomeEnhanced, 100); // 然后每100ms更新
   }
 
   // 更新加班按钮状态
@@ -1079,18 +911,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // 初始化加班按钮状态
-  chrome.storage.sync.get(['isAfterWorkOvertime'], function(result) {
-    updateOvertimeButton(result.isAfterWorkOvertime || false);
-  });
-  
-  // 初始化按钮显示状态（默认隐藏）
-  const overtimeBox = document.querySelector('.overtime-box');
-  if (overtimeBox) {
-    overtimeBox.style.display = 'none';
-  }
-
-  // 初始加载
-  updateIncomeEnhanced();
-  startUpdateLoop();
+  // 初始化
+  initializeWorkState();
 });
