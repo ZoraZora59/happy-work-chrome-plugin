@@ -2,6 +2,10 @@
 
 一款专为打工人设计的Chrome浏览器插件，实时显示工作收入，提供工作动力和成就感。
 
+<img width="334" alt="image" src="https://github.com/user-attachments/assets/675ea4df-5b6f-4310-9a89-eec493819f7e" />
+<img width="334" alt="image" src="https://github.com/user-attachments/assets/0977ca17-7fca-4fd0-84ad-e4db1f0a2888" />
+
+
 ## ✨ 核心功能
 
 收入构成的解释：
@@ -10,6 +14,9 @@
 2. 实时收入：这个收入是从今天的上班时间开始到当前的实时收入，但是会剔除掉休息时间的部分不计算收入。工作日下班后加班的话，加班费会自动加入到实时收入中，但是不会计算到"今日工资"里。
 3. 时薪：今日工资除以单日工作小时数。如果工作日下班后加班的话，这个时薪会随时更新。
 4. 特别注意：工作日下班后加班的情况，需要在界面里点击【😭我在加班】才会统计加班费
+
+<img width="563" alt="image" src="https://github.com/user-attachments/assets/a9c63c8c-7bf0-4174-9b23-11f76294b29b" />
+<img width="560" alt="image" src="https://github.com/user-attachments/assets/df9582ba-ba17-4835-a56d-d1df33301ed8" />
 
 ### 🚀 实时收入显示
 - **平滑连续增长**：收入数字每秒钟平滑增长，营造"实时赚钱"的愉悦感
