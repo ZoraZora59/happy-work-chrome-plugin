@@ -9,11 +9,34 @@ document.addEventListener('DOMContentLoaded', function () {
   const setIncomeBtn = document.getElementById('setIncomeBtn');
   const overtimeBtn = document.getElementById('overtimeBtn');
 
+  // Modal elements
+  const coffeeModal = document.getElementById('coffeeModal');
+  const buyCoffeeBtn = document.getElementById('buyCoffeeBtn');
+  const closeButton = document.querySelector('.close-button');
+
   let currentRefreshInterval = null;
   let displayIncome = 0; // 用于平滑动画的显示收入
   let lastUpdateTime = Date.now(); // 上次动画更新时间
   let workState = null; // 在内存中维护的工作状态
   let lastSaveTime = 0; // 上次保存状态到硬盘的时间
+
+  // Click listeners for modal
+  if(buyCoffeeBtn && coffeeModal && closeButton) {
+    buyCoffeeBtn.onclick = function(event) {
+      event.preventDefault();
+      coffeeModal.style.display = "flex";
+    }
+  
+    closeButton.onclick = function() {
+      coffeeModal.style.display = "none";
+    }
+  
+    window.onclick = function(event) {
+      if (event.target == coffeeModal) {
+        coffeeModal.style.display = "none";
+      }
+    }
+  }
 
   // 点击设置按钮跳转到设置页面
   setIncomeBtn.onclick = function () {

@@ -92,8 +92,6 @@ h1::after {
   letter-spacing: -0.02em;
 }
 
-
-
 .income-progress {
   background: linear-gradient(90deg, #f0f0f0 0%, #e8e8e8 100%);
   border-radius: 8px;
@@ -201,22 +199,15 @@ h1::after {
 }
 
 .footer {
-  margin: 20px 0 12px 0;
-  color: #999;
+  margin: 20px 0 8px 0;
   font-size: 0.9em;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-}
-
-.footer::before {
-  content: '☕';
-  font-size: 1.1em;
 }
 
 #setIncomeBtn {
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 12px 24px;
   background: linear-gradient(135deg, #3ec6c1 0%, #2ea9a4 100%);
   color: #fff;
@@ -243,8 +234,6 @@ h1::after {
   transform: translateY(0);
   box-shadow: 0 2px 10px rgba(62, 198, 193, 0.3);
 }
-
-
 
 /* 平静阶段 - 优雅上升动画 */
 @keyframes moneyRiseCalm {
@@ -972,4 +961,99 @@ h1::after {
   animation-duration: 0s !important;
   animation-delay: 0s !important;
   transition-duration: 0.1s !important;
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+
+/* Modal Styles */
+.modal {
+  display: none; 
+  position: fixed; 
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.6);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 0;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 90%;
+  max-width: 300px;
+  border-radius: 12px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+.close-button {
+  color: #aaa;
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.modal h2 {
+    font-size: 1.2em;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.modal img {
+    width: 200px;
+    height: auto;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+.modal p {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.footer a {
+  display: inline-block;
+  padding: 8px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  background-color: #fafafa;
+  color: #666;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.footer a:hover {
+  background-color: #f0f0f0;
+  border-color: #3ec6c1;
+  color: #3ec6c1;
+}
+
+.container.zen-mode .footer a {
+  background-color: transparent;
+  border-color: #ddd;
+  color: #999;
+}
+.container.zen-mode .footer a:hover {
+  background-color: #f5f5f5;
+  border-color: #3ec6c1;
+  color: #3ec6c1;
 }
