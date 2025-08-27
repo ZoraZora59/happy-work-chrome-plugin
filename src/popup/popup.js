@@ -233,7 +233,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const date = new Date(year, month, day);
       const dayOfWeek = date.getDay(); // 0=周日, 1=周一, ..., 6=周六
       
-      if (workDays.includes(dayOfWeek)) {
+      // 工作日但遇到节假日时不计入正常工作日
+      if (workDays.includes(dayOfWeek) && !isHoliday(date)) {
         totalWorkDays++;
       }
       
@@ -259,16 +260,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const today = new Date();
     const dayOfWeek = today.getDay();
     const isWorkDay = workDays.includes(dayOfWeek);
-    
-    // 节假日加班
-    if (overtimeSettings.holiday?.enabled && isHoliday(today)) {
-      return { type: 'holiday', multiplier: parseFloat(overtimeSettings.holiday.multiplier || 3) };
+    const isHolidayToday = isHoliday(today);
+
+    // 节假日：默认按休息日处理，除非开启节假日加班
+    if (isHolidayToday) {
+      if (overtimeSettings.holiday?.enabled) {
+        return { type: 'holiday', multiplier: parseFloat(overtimeSettings.holiday.multiplier || 3) };
+      }
+      return { type: 'off', multiplier: 0 };
     }
-    
+
     // 普通休息日加班
-    if (overtimeSettings.weekend?.enabled && 
-        !isWorkDay && 
-        !isHoliday(today) &&
+    if (overtimeSettings.weekend?.enabled &&
+        !isWorkDay &&
         isWeekendOvertimeWeek(overtimeSettings.weekend.baseWeekStart, overtimeSettings.weekend.frequency)) {
       return { type: 'weekend', multiplier: parseFloat(overtimeSettings.weekend.multiplier || 2) };
     }
