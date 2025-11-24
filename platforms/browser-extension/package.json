@@ -1,0 +1,15 @@
+{
+  "name": "@happy-work/browser-extension",
+  "version": "3.0.0",
+  "description": "打工人加油站 Chrome 插件 - 实时显示工作收入，动态心情系统，渐进式彩虹特效。",
+  "private": false,
+  "main": "index.js",
+  "scripts": {
+    "dev": "npm run build",
+    "build": "rm -rf dist && mkdir -p dist && cp -r src manifest.json dist/ && if [ -d public ]; then cp -r public dist/; fi"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}
