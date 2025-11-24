@@ -1,17 +1,12 @@
 {
-  "name": "happy-work-chrome-plugin",
-  "version": "3.0.0",
-  "description": "打工人加油站 Chrome 插件 - 实时显示工作收入，动态心情系统，渐进式彩虹特效，为打工人提供工作激励！",
-  "main": "index.js",
+  "name": "happy-work-clients",
+  "private": true,
+  "description": "打工人加油站多端实现仓库，包含浏览器插件与移动端骨架。",
+  "workspaces": [
+    "platforms/browser-extension"
+  ],
   "scripts": {
-    "dev": "webpack --mode development --watch",
-    "build": "webpack --mode production"
-  },
-  "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "webpack": "^5.0.0",
-    "webpack-cli": "^4.0.0"
-  },
-  "dependencies": {}
-} 
+    "dev:browser": "npm run dev --workspace @happy-work/browser-extension",
+    "build:browser": "npm run build --workspace @happy-work/browser-extension"
+  }
+}
