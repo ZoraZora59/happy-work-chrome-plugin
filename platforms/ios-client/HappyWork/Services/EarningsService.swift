@@ -56,13 +56,22 @@ final class EarningsService: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
-                let now = Date()
-                let elapsed = now.timeIntervalSince(snapshot.startTime)
-                let earned = elapsed / 3600.0 * snapshot.hourlyRate
-                let stage = Self.moodStage(for: elapsed)
-                snapshot = EarningsSnapshot(startTime: snapshot.startTime, hourlyRate: snapshot.hourlyRate, elapsed: elapsed, earned: earned, moodStage: stage)
+                self.recalc(at: Date())
             }
         }
+    }
+
+    func recalc(at date: Date = .now) {
+        let elapsed = date.timeIntervalSince(snapshot.startTime)
+        let earned = elapsed / 3600.0 * snapshot.hourlyRate
+        let stage = Self.moodStage(for: elapsed)
+        snapshot = EarningsSnapshot(
+            startTime: snapshot.startTime,
+            hourlyRate: snapshot.hourlyRate,
+            elapsed: elapsed,
+            earned: earned,
+            moodStage: stage
+        )
     }
 
     private static func moodStage(for elapsed: TimeInterval) -> EarningsSnapshot.MoodStage {

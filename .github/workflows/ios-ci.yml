@@ -1,0 +1,33 @@
+name: iOS CI
+
+on:
+  push:
+    paths:
+      - 'platforms/ios-client/**'
+      - '.github/workflows/ios-ci.yml'
+  pull_request:
+    paths:
+      - 'platforms/ios-client/**'
+      - '.github/workflows/ios-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 XcodeGen
+        run: brew install xcodegen
+
+      - name: 生成 Xcode 工程
+        working-directory: platforms/ios-client
+        run: xcodegen generate
+
+      - name: 运行单元测试（iOS 17.5 模拟器）
+        working-directory: platforms/ios-client
+        run: |
+          xcodebuild test \
+            -scheme HappyWork \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO

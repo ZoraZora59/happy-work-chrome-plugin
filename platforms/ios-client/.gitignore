@@ -1,0 +1,5 @@
+# Xcode 生成产物
+DerivedData
+*.xcworkspace
+*.xcodeproj
+.build
