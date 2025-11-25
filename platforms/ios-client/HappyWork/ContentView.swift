@@ -5,28 +5,47 @@ struct ContentView: View {
     @EnvironmentObject private var earningsService: EarningsService
     @EnvironmentObject private var activityManager: LiveActivityManager
     @State private var hourlyRate: Double = 50
+    @State private var annualBonus: Double = 0
     @State private var startTime = Date()
     @State private var isWorking = false
+
+    private let standardMonthlyWorkHours: Double = 21.75 * 8
+
+    private var effectiveHourlyRate: Double {
+        let bonusHourly = annualBonus / standardMonthlyWorkHours
+        return max(0, hourlyRate + bonusHourly)
+    }
 
     var body: some View {
         NavigationView {
             VStack(spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("当前时薪")
+                    Text("当前时薪（含年终奖）")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     HStack(alignment: .firstTextBaseline) {
-                        Text(String(format: "¥%.0f", hourlyRate))
+                        Text(String(format: "¥%.0f", effectiveHourlyRate))
                             .font(.system(size: 32, weight: .bold))
                         Spacer()
                         Button(action: {
                             withAnimation {
                                 hourlyRate = max(10, hourlyRate + 10)
-                                earningsService.update(rate: hourlyRate)
+                                syncWorkingRate()
                             }
                         }) {
                             Image(systemName: "plus.circle.fill")
                         }
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("年终奖（税前，元）")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        TextField("0", value: $annualBonus, format: .number)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.roundedBorder)
+                        Text("年终奖会按月折算进时薪，默认以每月 21.75 天、每天 8 小时计算。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .padding()
@@ -93,10 +112,13 @@ struct ContentView: View {
             .task(id: isWorking) {
                 if isWorking {
                     startTime = Date()
-                    await earningsService.startSession(start: startTime, hourlyRate: hourlyRate)
+                    await earningsService.startSession(start: startTime, hourlyRate: effectiveHourlyRate)
                 } else {
                     earningsService.stopSession()
                 }
+            }
+            .onChange(of: annualBonus) { _ in
+                syncWorkingRate()
             }
             .onReceive(earningsService.$snapshot) { _ in
                 activityManager.updateLiveActivity()
@@ -110,6 +132,11 @@ struct ContentView: View {
 
     private func startLiveActivity() {
         activityManager.startLiveActivity()
+    }
+
+    private func syncWorkingRate() {
+        guard isWorking else { return }
+        earningsService.update(rate: effectiveHourlyRate)
     }
 }
 
