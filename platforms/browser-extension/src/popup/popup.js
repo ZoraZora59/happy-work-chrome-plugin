@@ -546,7 +546,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     // 使用 settings 对象中正确的、扁平化的属性结构
-    const monthlyIncome = parseFloat(settings.salary);
+    const baseMonthlyIncome = parseFloat(settings.salary);
+    const annualBonus = settings.bonus ? parseFloat(settings.bonus) : 0;
+    const monthlyIncome = baseMonthlyIncome + (annualBonus / 12);
     const workDays = settings.workDays || [1, 2, 3, 4, 5];
     const workStart = settings.workStart || '09:00';
     const workEnd = settings.workEnd || '18:00';
