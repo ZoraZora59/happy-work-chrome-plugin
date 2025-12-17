@@ -604,6 +604,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 更新UI - 实时收入
+    displayIncome = currentBaseIncome;
     const previousDisplayIncome = parseFloat(incomeValue.textContent.replace('¥', '')) || displayIncome;
     animateValue(incomeValue, previousDisplayIncome, displayIncome, 500);
     
@@ -612,14 +613,11 @@ document.addEventListener('DOMContentLoaded', function () {
     incomePercent.textContent = `${Math.min(100, progressPercent).toFixed(0)}%`;
     
     // 更新UI - 今日收入
-    let todayDisplayIncome;
-    let todayIncomeLabel = '今日到手';
-    if (progressPercent >= 100 || !isCurrentlyWorkingCheck) {
-      todayDisplayIncome = currentBaseIncome;
-      todayIncomeLabel = '今日实收';
-    } else {
-      todayDisplayIncome = dailyIncome * todayWorkInfo.multiplier;
-    }
+    const targetDailyIncome = dailyIncome * todayWorkInfo.multiplier;
+    const hasCompletedWork = progressPercent >= 100;
+
+    const todayIncomeLabel = hasCompletedWork ? '今日实收' : '今日到手';
+    const todayDisplayIncome = hasCompletedWork ? currentBaseIncome : targetDailyIncome;
     document.querySelector('.today-label').textContent = todayIncomeLabel;
     todayValue.textContent = `¥${Math.round(todayDisplayIncome)}`;
 
