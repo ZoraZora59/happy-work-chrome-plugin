@@ -1,76 +1,59 @@
 import Foundation
-import Observation
+import Combine
 
+/// 驱动 App 内（前台）每秒的收入展示。
+///
+/// 注意：这个每秒 Timer 只在 App 前台有效——锁屏上的实时走动靠的是系统计时视图
+/// （见 `WorkAttributes`），而不是这个 Timer。
 @MainActor
 final class EarningsService: ObservableObject {
-    @Published private(set) var snapshot = EarningsSnapshot(
-        startTime: .now,
-        hourlyRate: 50,
-        elapsed: 0,
-        earned: 0,
-        moodStage: .calm
-    )
+    @Published private(set) var session: WorkSession?
+    @Published private(set) var snapshot: EarningsSnapshot = .zero
 
     private var timer: Timer?
 
-    var progress: Double {
-        min(snapshot.elapsed / 3600.0, 1.0)
-    }
+    var isRunning: Bool { session != nil }
 
-    var earningsString: String {
-        String(format: "%.2f", snapshot.earned)
-    }
-
-    var elapsedString: String {
-        let minutes = Int(snapshot.elapsed) / 60
-        let seconds = Int(snapshot.elapsed) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-
-    var progressDescription: String {
-        "当前阶段：" + snapshot.moodStage.rawValue + " " + snapshot.moodStage.emoji
-    }
-
-    func startSession(start: Date, hourlyRate: Double) async {
-        stopSession()
-        snapshot = EarningsSnapshot(startTime: start, hourlyRate: hourlyRate, elapsed: 0, earned: 0, moodStage: .calm)
+    /// 开始一次新会话。
+    func start(_ session: WorkSession) {
+        self.session = session
+        refresh()
         scheduleTimer()
     }
 
-    func stopSession() {
-        timer?.invalidate()
-        timer = nil
+    /// App 重启后恢复进行中的会话；若已收工则只展示最终快照、不再启动 Timer。
+    func resume(_ session: WorkSession) {
+        self.session = session
+        refresh()
+        if !session.isComplete() { scheduleTimer() }
     }
 
-    func update(rate: Double) {
-        snapshot = EarningsSnapshot(
-            startTime: snapshot.startTime,
-            hourlyRate: rate,
-            elapsed: snapshot.elapsed,
-            earned: snapshot.earned,
-            moodStage: snapshot.moodStage
-        )
+    /// 结束会话。
+    func stop() {
+        timer?.invalidate(); timer = nil
+        session = nil
+        snapshot = .zero
+    }
+
+    /// 会话进行中修改时薪（例如用户中途调整了配置）后，重新计算。
+    func updateRate(_ rate: Double) {
+        guard var s = session else { return }
+        s.hourlyRate = rate
+        session = s
+        refresh()
     }
 
     private func scheduleTimer() {
+        timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                let now = Date()
-                let elapsed = now.timeIntervalSince(snapshot.startTime)
-                let earned = elapsed / 3600.0 * snapshot.hourlyRate
-                let stage = Self.moodStage(for: elapsed)
-                snapshot = EarningsSnapshot(startTime: snapshot.startTime, hourlyRate: snapshot.hourlyRate, elapsed: elapsed, earned: earned, moodStage: stage)
-            }
+            Task { @MainActor in self?.refresh() }
         }
     }
 
-    private static func moodStage(for elapsed: TimeInterval) -> EarningsSnapshot.MoodStage {
-        switch elapsed {
-        case 0..<900: return .calm
-        case 900..<1800: return .focus
-        case 1800..<2700: return .flow
-        default: return .tired
-        }
+    private func refresh() {
+        guard let s = session else { snapshot = .zero; return }
+        let now = Date()
+        snapshot = s.snapshot(at: now)
+        if s.isComplete(at: now) { timer?.invalidate(); timer = nil }  // 收工后停表
     }
 }

@@ -1,43 +1,154 @@
-# iOS 客户端
+# iOS 客户端（打工人加油站）
 
-基于 SwiftUI + ActivityKit 的原生实现，支持在锁屏与动态岛实时查看收入与进展。目录已包含 App 与 Widget Extension 的基础代码，可直接导入 Xcode 15+ 运行。
+基于 **SwiftUI + ActivityKit** 的原生实现：App 内每秒展示实时收入与进度，并通过
+**Live Activity** 在锁屏 / 灵动岛展示进度。工程用 **XcodeGen** 从 `project.yml` 生成，
+仓库已附带生成好的 `HappyWork.xcodeproj`，可直接打开。
+
+> 当前状态：**代码已通过编译校验**——App 与 Widget 两个 target 均用 iOS 16.2 SDK
+> typecheck 通过，核心计薪逻辑单测通过（详见「测试」）。在 Xcode 选 iOS 16.2+ 模拟器
+> 即可直接 Run。真机调试与上架需要你自己的 Apple 账号/签名，详见文末「📋 距离上架还差什么」。
+>
+> 若 Xcode 报 `No available simulator runtimes`，到 **Xcode › Settings › Components**
+> 下载一个 iOS 模拟器运行时即可（编译 App 图标资源也需要它）。
+
+---
+
+## 🚀 现在就能跑（模拟器，无需任何 Apple 账号）
+
+```bash
+cd platforms/ios-client
+open HappyWork.xcodeproj
+```
+
+在 Xcode 里：
+1. 顶部选一个 **iOS 16.2+ 的模拟器**（动态岛需要 iPhone 14 Pro / 15 Pro 及以上型号的模拟器）。
+2. 直接 **Run（⌘R）**。模拟器构建**不需要签名、不需要登录 Apple ID**。
+3. 点「开始打工」→ 点「启动」创建锁屏实时活动。锁屏可在模拟器里用 **Device › Lock**（⌘L）查看。
+
+需要 Xcode 15+（建议 16）。若你修改了 `project.yml`，用下面命令重建工程：
+
+```bash
+brew install xcodegen   # 仅首次
+xcodegen generate
+```
+
+---
 
 ## 目录结构
+
 ```
 platforms/ios-client/
-├── HappyWork/                 # App 主工程（SwiftUI）
-│   ├── HappyWorkApp.swift     # App 入口，注入计薪与活动管理服务
-│   ├── ContentView.swift      # 首页，展示时薪调节、实时收入与进度条、启动/结束锁屏进度
-│   ├── Models/                # 数据模型（心情阶段等）
-│   └── Services/              # 计薪计算、Live Activity 管理
-├── HappyWorkWidget/           # Widget Extension，提供锁屏/动态岛实时进度
-│   ├── HappyWorkLiveActivity.swift
+├── project.yml                     # XcodeGen 工程定义（真实来源）
+├── HappyWork.xcodeproj/            # 生成的 Xcode 工程（已入库，可直接打开）
+├── Shared/
+│   └── WorkAttributes.swift        # Live Activity 属性，App 与 Widget 共用
+├── HappyWork/                      # App 主工程
+│   ├── HappyWorkApp.swift          # 入口，注入服务、重启后恢复会话/活动
+│   ├── ContentView.swift           # 首页：配置时薪、实时收入、锁屏控制
+│   ├── Info.plist                  # 含 NSSupportsLiveActivities
+│   ├── PrivacyInfo.xcprivacy       # 隐私清单（声明 UserDefaults 使用原因）
+│   ├── Models/                     # MoodStage / EarningsSnapshot / WorkSession
+│   ├── Services/                   # 计薪、持久化、Live Activity 管理
+│   └── Assets.xcassets/            # App 图标（单尺寸 1024，Xcode 自动缩放）
+├── HappyWorkWidget/                # Widget Extension（承载 Live Activity）
 │   ├── HappyWorkWidgetBundle.swift
-│   └── WorkAttributes.swift
-└── README.md
+│   ├── HappyWorkLiveActivity.swift # 锁屏 + 灵动岛布局
+│   ├── Info.plist                  # NSExtensionPointIdentifier = widgetkit-extension
+│   └── PrivacyInfo.xcprivacy
+└── HappyWorkTests/                 # 纯逻辑单测（计薪/折算/封顶）
 ```
 
-## 开发环境
-- Xcode 15+，iOS 17+（ActivityKit 需要 16.2+，建议 17 以获得最新 API）
-- 打开 `platforms/ios-client` 目录后，使用 **File > Open** 选择此文件夹或创建 `HappyWork.xcodeproj` 将现有源码添加为 target 与 extension。
+## 功能
 
-## 主要功能
-- **计薪与心情阶段**：`EarningsService` 每秒刷新 elapsed/earned，并根据时间段映射为不同心情阶段与表情。
-- **锁屏实时进度**：`LiveActivityManager` 与 Widget `HappyWorkLiveActivity` 协作，展示当前收入、已用时长与心情状态。
-- **动态岛体验**：紧凑/扩展区域分别展示表情、收入与进度条，随状态刷新。
+- **计薪与心情**：按「有效时薪 × 已工作时长」实时计算收入；进度（0~100%，按当日工作时长）
+  映射心情阶段：冷静搬砖 🙂 → 专注冲刺 🚀 → 灵感爆棚 🔥 → 收获满满 🤩。
+- **年终奖折算**：年终奖按**全年**折算进时薪（默认每月 21.75 天、每天 8 小时，即
+  `年终奖 / 12 / 174`）。
+- **锁屏 / 灵动岛**：已工作时长与进度条在锁屏上**自动走动**，收入金额为快照（见下）。
+- **重启恢复**：会话与配置存在本地，App 重启后自动恢复，并重新接管仍存活的 Live Activity。
 
-## 运行步骤
-1. 在 Xcode 中创建一个新的 iOS App target（Bundle ID 建议 `com.example.HappyWork`），将 `HappyWork` 目录的 Swift 文件加入 target。
-2. 创建一个 Widget Extension target，将 `HappyWorkWidget` 目录下的文件加入，并在 *Deployment Info* 中勾选 **Live Activities**。
-3. 在 App 的 `Signing & Capabilities` 中开启 *Background Modes*（至少 `Background fetch`）、`Live Activities` 与通知权限。
-4. 连接真机（必须支持动态岛或 iOS 16.2+ 锁屏）运行，点击「开始打工」再点击「启动」以创建锁屏进度。
+---
 
-## 重点实现说明
-- `EarningsService` 使用 `Timer` 每秒计算收入并推导心情阶段（冷静搬砖→专注冲刺→灵感爆棚→需要休息）。
-- `LiveActivityManager` 依赖 `ActivityKit` 创建/更新/结束 `WorkAttributes` 活动，确保锁屏与动态岛同步刷新。
-- `HappyWorkLiveActivity` 提供锁屏视图与动态岛布局，包含进度条、已赚金额与心情文案。
+## ⚠️ 锁屏实时性的边界（重要，已和苹果文档核对）
 
-## 后续可拓展
-- 增加本地持久化或 iCloud 同步，让计薪配置在多设备一致。
-- 支持推送驱动的 Live Activity（`pushType`），便于跨设备更新。
-- 引入 HealthKit 或 Screen Time 数据，为心情阶段提供更智能的算法。
+这是本类 App 最容易踩的坑，先讲清楚：
+
+- ✅ **已工作时长 / 进度条**：用系统的 `Text(timerInterval:)` 和 `ProgressView(timerInterval:)`
+  渲染。系统会自行按时间插值，**即使 App 没有运行，锁屏上也会自动走动**。
+- ❌ **收入金额（¥）无法在后台逐秒跳动**。Live Activity 运行在一个**无网络、不执行代码**的
+  沙盒里，系统只能自动推进「时间类」视图，**无法对任意数字（如逐秒增长的金额）做插值**。
+  因此金额是一个**快照**：只在你**打开 App** 时（或切到后台前）刷新，锁屏上会标注「截至 HH:mm」。
+
+  > 苹果原文："Each Live Activity runs in its own sandbox, and — unlike a widget — it can't
+  > access the network… To update the dynamic data of an active Live Activity, use ActivityKit
+  > in your app or allow your Live Activities to receive ActivityKit push notifications."
+  > （[文档](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities)）
+
+**要让锁屏金额也逐秒跳动，只有一条路：推送驱动（APNs push + 服务端）。** 那需要付费开发者账号
+配置 Push 能力与一个定时推送的后端，属于本期范围之外的增强项（见「后续可拓展」）。
+
+---
+
+## 数据与持久化
+
+- 配置（基础时薪、年终奖、每日工时）与进行中的会话用 **UserDefaults** 持久化。
+- **未使用 App Group**：Widget 的数据全部通过 Live Activity 的 `ContentState` 传递，
+  Widget 不直接读 UserDefaults。App Group 需要付费账号配置 entitlement，留到将来做
+  「主屏小组件读取配置」时再加。
+
+## 测试
+
+`HappyWorkTests` 是纯逻辑单测（无需界面），覆盖：年终奖折算、收入/进度在收工时封顶、心情映射。
+
+```bash
+# 需要完整 Xcode（命令行工具不含模拟器/XCTest）
+xcodebuild test -scheme HappyWork -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+```
+
+---
+
+## 📋 距离上架还差什么：签名与部署交接清单
+
+按「能做什么」分成三档。**第 1 档现在就成立；第 2、3 档需要你的 Apple 账号，是交接给你的部分。**
+
+### 第 1 档 · 模拟器运行 — ✅ 已就绪，无需账号
+直接 `open HappyWork.xcodeproj` 选模拟器 Run。本地 Live Activity 仅需 Info.plist 的
+`NSSupportsLiveActivities`（已配置），**不需要任何付费能力**。
+
+### 第 2 档 · 真机调试 — 免费 Apple ID 即可
+1. Xcode › Settings › Accounts 登录你的 Apple ID（免费的「Personal Team」）。
+2. 把占位 bundle id 改成你自己的（见下方「必改项」）。
+3. 选中真机 Run。
+4. 限制（苹果对免费账号的硬限制）：描述文件 **7 天过期**需重装；最多 3 台测试设备、10 个 App ID。
+5. 灵动岛需要 iPhone 14 Pro / 15 Pro 及以上真机；其余机型只有锁屏样式。
+
+### 第 3 档 · 上架 App Store — 需要付费开发者账号（$99/年）
+
+**必改项（交给你前我用的是占位值）：**
+- `project.yml` 里 `options.bundleIdPrefix` 把 `com.example` 换成你拥有的反向域名（如 `com.yourname`），
+  改完 `xcodegen generate` 重建；或直接在 Xcode 改两个 target 的 Bundle Identifier。
+  ⚠️ **Widget 的 id 必须是 App id 的子级**（`xxx.happywork` / `xxx.happywork.widget`），否则上传校验失败。
+- `project.yml` 里 `DEVELOPMENT_TEAM` 填你的 10 位 Team ID（或在 Xcode Signing & Capabilities 选 Team）。
+
+**上架流程（你来做）：**
+1. [Apple Developer](https://developer.apple.com) 注册付费会员（$99/年）。
+2. App Store Connect 注册 **App ID**（含 Widget 的 App ID）。
+3. 证书 + 描述文件：建议用 Xcode **Automatic signing** 自动生成。
+4. App Store Connect 新建 App 记录（名称、分类、语言）。
+5. 准备素材：各尺寸**截图**、**App 隐私填报**（本仓库已附 `PrivacyInfo.xcprivacy`，声明了
+   UserDefaults 的使用原因 CA92.1，是上传校验的硬性要求）、**年龄分级**、**出口合规**声明。
+6. Xcode：选「Any iOS Device」→ Product › **Archive** → 上传到 App Store Connect。
+7. 走 **TestFlight** 内测，确认锁屏/灵动岛在真机正常。
+8. 提交审核（Submit for Review）。
+
+**哪些能力需要付费账号**（本期都没用到，所以现在不挡你）：
+- 推送驱动的 Live Activity（锁屏金额逐秒跳）→ 需要 Push Notifications / APNs。
+- App Group（App 与小组件共享数据）→ 需要付费账号配置 entitlement。
+
+---
+
+## 已知限制 / 后续可拓展
+
+- 锁屏金额为快照（见上）。增强：接 **APNs push** 驱动逐秒刷新。
+- 会话结束（到达收工时间）后，下次打开 App 才会反映完成态；活动会因 `staleDate` 标记为「数据已过期」。
+- 可加：主屏小组件（需 App Group）、iCloud 同步配置、加班/多段工时、HealthKit 心情算法。

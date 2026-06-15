@@ -2,89 +2,87 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
+/// 锁屏与动态岛的 Live Activity 渲染。
+///
+/// 关键：**已工作时长**用 `Text(timerInterval:)`、**进度条**用 `ProgressView(timerInterval:)`，
+/// 这两类系统计时视图会在锁屏上自动走动（即使 App 没运行）；**收入金额**是 ContentState
+/// 里的快照，只在 App/推送更新时变化，并附「截至 HH:mm」说明。
 struct HappyWorkLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkAttributes.self) { context in
-            lockScreenView(for: context.state, attributes: context.attributes)
-                .activityBackgroundTint(.black.opacity(0.2))
+            LockScreenView(context: context)
+                .activityBackgroundTint(Color.black.opacity(0.25))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    emojiState(context.state)
+                    Text(context.state.emoji).font(.title2)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text("¥" + formatted(context.state.earned))
-                        .font(.title3.bold())
+                    Text("¥" + money(context.state.earned))
+                        .font(.title3.bold()).monospacedDigit()
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    progressBar(state: context.state, hourlyRate: context.attributes.hourlyRate)
+                    VStack(spacing: 4) {
+                        ProgressView(timerInterval: context.attributes.timerRange, countsDown: false)
+                            .tint(.green)
+                        HStack {
+                            Text(context.state.mood)
+                            Spacer()
+                            Text(timerInterval: context.attributes.timerRange, countsDown: false)
+                                .monospacedDigit()
+                        }
+                        .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             } compactLeading: {
-                emojiState(context.state)
+                Text(context.state.emoji)
             } compactTrailing: {
-                Text("¥" + formatted(context.state.earned))
-                    .font(.caption)
+                Text("¥" + money(context.state.earned)).monospacedDigit()
             } minimal: {
-                emojiState(context.state)
+                Text(context.state.emoji)
             }
         }
     }
 
-    private func lockScreenView(for state: WorkAttributes.ContentState, attributes: WorkAttributes) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                emojiState(state)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("打工进行中")
-                        .font(.headline)
-                    Text("时薪 ¥" + formatted(attributes.hourlyRate))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text(elapsedString(state.elapsed))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-            progressBar(state: state, hourlyRate: attributes.hourlyRate)
-        }
-        .padding()
-    }
-
-    private func progressBar(state: WorkAttributes.ContentState, hourlyRate: Double) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ProgressView(value: min(state.elapsed / 3600, 1))
-                .tint(.green)
-            HStack {
-                Text("已赚 ¥" + formatted(state.earned))
-                Spacer()
-                Text(state.mood)
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-    }
-
-    private func emojiState(_ state: WorkAttributes.ContentState) -> some View {
-        Text(state.emoji)
-            .font(.title2)
-    }
-
-    private func formatted(_ value: Double) -> String {
-        String(format: "%.2f", value)
-    }
-
-    private func elapsedString(_ seconds: TimeInterval) -> String {
-        let minutes = Int(seconds) / 60
-        let secs = Int(seconds) % 60
-        return String(format: "%02d:%02d", minutes, secs)
-    }
+    private func money(_ value: Double) -> String { String(format: "%.0f", value) }
 }
 
-extension HappyWorkLiveActivity: PreviewProvider {
-    static var previews: some View {
-        HappyWorkLiveActivity()
-            .previewContext(WorkAttributes(hourlyRate: 50), state: WorkAttributes.ContentState(earned: 20.5, elapsed: 1200, mood: "专注冲刺", emoji: "🚀"))
+private struct LockScreenView: View {
+    let context: ActivityViewContext<WorkAttributes>
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(context.state.emoji).font(.largeTitle)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("打工进行中").font(.headline)
+                    Text("时薪 ¥\(String(format: "%.0f", context.attributes.hourlyRate)) · \(context.state.mood)")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("¥" + String(format: "%.0f", context.state.earned))
+                        .font(.title2.bold()).monospacedDigit()
+                    Text("截至 \(context.state.asOf, format: .dateTime.hour().minute())")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+
+            ProgressView(timerInterval: context.attributes.timerRange, countsDown: false)
+                .tint(.green)
+
+            HStack(spacing: 4) {
+                Text("已工作")
+                Text(timerInterval: context.attributes.timerRange, countsDown: false)
+                    .monospacedDigit()
+                Spacer()
+                if context.isStale {
+                    Text("数据已过期").foregroundStyle(.orange)
+                }
+            }
+            .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding()
     }
 }

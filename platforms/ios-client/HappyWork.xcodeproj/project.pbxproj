@@ -1,0 +1,605 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		219598A68F1B882F0FD198F4 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C367F842EE170470D42C4E30 /* LiveActivityManager.swift */; };
+		22A3316B42B7CBE5603C18B8 /* HappyWorkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D9624CCE269E19FF67F7F0 /* HappyWorkTests.swift */; };
+		27021CCFD0D09B8634B49852 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C9D172357C7F64A8FE69A091 /* PrivacyInfo.xcprivacy */; };
+		2951613BB679931181F10272 /* WorkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 660EE55BC284906CC531234D /* WorkSession.swift */; };
+		3A382E66842A1E0AD7C3B9E3 /* WorkAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A274F8DA8184B93C7333E6DD /* WorkAttributes.swift */; };
+		68866D88206EEEF466ADE680 /* WorkAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A274F8DA8184B93C7333E6DD /* WorkAttributes.swift */; };
+		80990E676748958E8CE684B6 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41EF9C2A1B975EED95E31A27 /* SettingsStore.swift */; };
+		8EE65B481365F92CA0136F31 /* HappyWorkLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0398FF2430F1C43ADFD9C399 /* HappyWorkLiveActivity.swift */; };
+		9168C09CB78B937E7DD4D7CE /* HappyWorkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDF8CFD9AE1282AC4F4730A9 /* HappyWorkApp.swift */; };
+		9993F18E67C1923DBCEEAF2E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E6A204921FDB59D24FB5F360 /* PrivacyInfo.xcprivacy */; };
+		9DF53EC5B50771E468791848 /* HappyWorkWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAB08F3710E2B6C9B5F72F4 /* HappyWorkWidgetBundle.swift */; };
+		B584B29A53313CE88E1D0448 /* EarningsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DF1F9BF2668994668514197 /* EarningsModel.swift */; };
+		B99848BC27A0665DDD5D1B83 /* HappyWorkWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1CAF54325D5CDF49CC843540 /* HappyWorkWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		CEBF4E3BAC8A4AD5ABAE8A1E /* EarningsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3968C7036B3E30004E02E39D /* EarningsService.swift */; };
+		F7319C59B639D347A494E75C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 06546CE33E66312D079D1FB3 /* Assets.xcassets */; };
+		FB20E464750FDF5C6B73B42A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E95A29C2C0D03CF45165C566 /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		65FDCCAD5A9D44376DA4D71F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 90BDA568274C5F7D9A21D4DF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7330CBE4D093632C9F972D3C;
+			remoteInfo = HappyWork;
+		};
+		676AE77ABAE8B7BFAF66CD92 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 90BDA568274C5F7D9A21D4DF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B06E2E88149809298411A43E;
+			remoteInfo = HappyWorkWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5AF930C0AE5ABF561DAB35B7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B99848BC27A0665DDD5D1B83 /* HappyWorkWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0398FF2430F1C43ADFD9C399 /* HappyWorkLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HappyWorkLiveActivity.swift; sourceTree = "<group>"; };
+		06546CE33E66312D079D1FB3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		13D9624CCE269E19FF67F7F0 /* HappyWorkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HappyWorkTests.swift; sourceTree = "<group>"; };
+		19EA2133DFDDCC16F06D8805 /* HappyWorkTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HappyWorkTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1CAF54325D5CDF49CC843540 /* HappyWorkWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = HappyWorkWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		2BAB08F3710E2B6C9B5F72F4 /* HappyWorkWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HappyWorkWidgetBundle.swift; sourceTree = "<group>"; };
+		3968C7036B3E30004E02E39D /* EarningsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EarningsService.swift; sourceTree = "<group>"; };
+		41EF9C2A1B975EED95E31A27 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
+		537EBB668E5AA9854F2D1EA0 /* HappyWork.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HappyWork.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5DF1F9BF2668994668514197 /* EarningsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EarningsModel.swift; sourceTree = "<group>"; };
+		660EE55BC284906CC531234D /* WorkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSession.swift; sourceTree = "<group>"; };
+		9118AF155906FBA6323D5046 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		9D55F718CA328F528F27F9D5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A274F8DA8184B93C7333E6DD /* WorkAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkAttributes.swift; sourceTree = "<group>"; };
+		BDF8CFD9AE1282AC4F4730A9 /* HappyWorkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HappyWorkApp.swift; sourceTree = "<group>"; };
+		C367F842EE170470D42C4E30 /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		C9D172357C7F64A8FE69A091 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		E6A204921FDB59D24FB5F360 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		E95A29C2C0D03CF45165C566 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1DFBA6B91B5CA57F1CF8B13A /* HappyWork */ = {
+			isa = PBXGroup;
+			children = (
+				06546CE33E66312D079D1FB3 /* Assets.xcassets */,
+				E95A29C2C0D03CF45165C566 /* ContentView.swift */,
+				BDF8CFD9AE1282AC4F4730A9 /* HappyWorkApp.swift */,
+				9D55F718CA328F528F27F9D5 /* Info.plist */,
+				E6A204921FDB59D24FB5F360 /* PrivacyInfo.xcprivacy */,
+				9C94A920439D84A1F4545B41 /* Models */,
+				6759D2246ACAF33B9957C7FC /* Services */,
+			);
+			path = HappyWork;
+			sourceTree = "<group>";
+		};
+		32B0C634EF460A849AA3529F /* HappyWorkWidget */ = {
+			isa = PBXGroup;
+			children = (
+				0398FF2430F1C43ADFD9C399 /* HappyWorkLiveActivity.swift */,
+				2BAB08F3710E2B6C9B5F72F4 /* HappyWorkWidgetBundle.swift */,
+				9118AF155906FBA6323D5046 /* Info.plist */,
+				C9D172357C7F64A8FE69A091 /* PrivacyInfo.xcprivacy */,
+			);
+			path = HappyWorkWidget;
+			sourceTree = "<group>";
+		};
+		4D63F7CED08CC58125B97775 /* HappyWorkTests */ = {
+			isa = PBXGroup;
+			children = (
+				13D9624CCE269E19FF67F7F0 /* HappyWorkTests.swift */,
+			);
+			path = HappyWorkTests;
+			sourceTree = "<group>";
+		};
+		6759D2246ACAF33B9957C7FC /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				3968C7036B3E30004E02E39D /* EarningsService.swift */,
+				C367F842EE170470D42C4E30 /* LiveActivityManager.swift */,
+				41EF9C2A1B975EED95E31A27 /* SettingsStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		9C94A920439D84A1F4545B41 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				5DF1F9BF2668994668514197 /* EarningsModel.swift */,
+				660EE55BC284906CC531234D /* WorkSession.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		AF80B458E4FC571FA29CC880 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A274F8DA8184B93C7333E6DD /* WorkAttributes.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		CC00F5718A19A842C66EAF0C = {
+			isa = PBXGroup;
+			children = (
+				1DFBA6B91B5CA57F1CF8B13A /* HappyWork */,
+				4D63F7CED08CC58125B97775 /* HappyWorkTests */,
+				32B0C634EF460A849AA3529F /* HappyWorkWidget */,
+				AF80B458E4FC571FA29CC880 /* Shared */,
+				E3011A4C4260DC87BE040DF3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E3011A4C4260DC87BE040DF3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				537EBB668E5AA9854F2D1EA0 /* HappyWork.app */,
+				19EA2133DFDDCC16F06D8805 /* HappyWorkTests.xctest */,
+				1CAF54325D5CDF49CC843540 /* HappyWorkWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7330CBE4D093632C9F972D3C /* HappyWork */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0AC462FBBCE2145BB7D6EB5 /* Build configuration list for PBXNativeTarget "HappyWork" */;
+			buildPhases = (
+				173DD89034405F28C17D3CD4 /* Sources */,
+				0B5EADFE3CCDFC4EBFF5DEC2 /* Resources */,
+				5AF930C0AE5ABF561DAB35B7 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				691B7B890CC97ACD6BFA8124 /* PBXTargetDependency */,
+			);
+			name = HappyWork;
+			packageProductDependencies = (
+			);
+			productName = HappyWork;
+			productReference = 537EBB668E5AA9854F2D1EA0 /* HappyWork.app */;
+			productType = "com.apple.product-type.application";
+		};
+		74EFBC6573C9E990E38D277A /* HappyWorkTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 165F77907635E9B7C07912B3 /* Build configuration list for PBXNativeTarget "HappyWorkTests" */;
+			buildPhases = (
+				0FBA4826114555392194E6EC /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A64F95F8C7E04B143CB446C0 /* PBXTargetDependency */,
+			);
+			name = HappyWorkTests;
+			packageProductDependencies = (
+			);
+			productName = HappyWorkTests;
+			productReference = 19EA2133DFDDCC16F06D8805 /* HappyWorkTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		B06E2E88149809298411A43E /* HappyWorkWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 364C8036CDACB29E65BDB7BF /* Build configuration list for PBXNativeTarget "HappyWorkWidget" */;
+			buildPhases = (
+				6804F097E8049BCDF3112E93 /* Sources */,
+				6E9F8CBCCE6753592427004A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HappyWorkWidget;
+			packageProductDependencies = (
+			);
+			productName = HappyWorkWidget;
+			productReference = 1CAF54325D5CDF49CC843540 /* HappyWorkWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		90BDA568274C5F7D9A21D4DF /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					7330CBE4D093632C9F972D3C = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					74EFBC6573C9E990E38D277A = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					B06E2E88149809298411A43E = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = BC61AB9BE1752A3C828DBAE2 /* Build configuration list for PBXProject "HappyWork" */;
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				"zh-Hans",
+			);
+			mainGroup = CC00F5718A19A842C66EAF0C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E3011A4C4260DC87BE040DF3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7330CBE4D093632C9F972D3C /* HappyWork */,
+				74EFBC6573C9E990E38D277A /* HappyWorkTests */,
+				B06E2E88149809298411A43E /* HappyWorkWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0B5EADFE3CCDFC4EBFF5DEC2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F7319C59B639D347A494E75C /* Assets.xcassets in Resources */,
+				9993F18E67C1923DBCEEAF2E /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6E9F8CBCCE6753592427004A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				27021CCFD0D09B8634B49852 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0FBA4826114555392194E6EC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22A3316B42B7CBE5603C18B8 /* HappyWorkTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		173DD89034405F28C17D3CD4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FB20E464750FDF5C6B73B42A /* ContentView.swift in Sources */,
+				B584B29A53313CE88E1D0448 /* EarningsModel.swift in Sources */,
+				CEBF4E3BAC8A4AD5ABAE8A1E /* EarningsService.swift in Sources */,
+				9168C09CB78B937E7DD4D7CE /* HappyWorkApp.swift in Sources */,
+				219598A68F1B882F0FD198F4 /* LiveActivityManager.swift in Sources */,
+				80990E676748958E8CE684B6 /* SettingsStore.swift in Sources */,
+				68866D88206EEEF466ADE680 /* WorkAttributes.swift in Sources */,
+				2951613BB679931181F10272 /* WorkSession.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6804F097E8049BCDF3112E93 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8EE65B481365F92CA0136F31 /* HappyWorkLiveActivity.swift in Sources */,
+				9DF53EC5B50771E468791848 /* HappyWorkWidgetBundle.swift in Sources */,
+				3A382E66842A1E0AD7C3B9E3 /* WorkAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		691B7B890CC97ACD6BFA8124 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B06E2E88149809298411A43E /* HappyWorkWidget */;
+			targetProxy = 676AE77ABAE8B7BFAF66CD92 /* PBXContainerItemProxy */;
+		};
+		A64F95F8C7E04B143CB446C0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7330CBE4D093632C9F972D3C /* HappyWork */;
+			targetProxy = 65FDCCAD5A9D44376DA4D71F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4BA75E30FF834471B7CA2E0B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HappyWork/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		60FEAE840043CC3A4C9373D4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HappyWorkWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork.widget;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		6F12CC1A1A009A46E3185357 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HappyWorkWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork.widget;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		75863845F32A25CB840F45A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HappyWork.app/HappyWork";
+			};
+			name = Debug;
+		};
+		A0A4C150F79BE0C9604FB7B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HappyWork/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		DEF953CEEA0E5588713AE756 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		E2C2F807EE6A5405C82C3505 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HappyWork.app/HappyWork";
+			};
+			name = Release;
+		};
+		FA0B93573B5E0DD620AACB04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		165F77907635E9B7C07912B3 /* Build configuration list for PBXNativeTarget "HappyWorkTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				75863845F32A25CB840F45A8 /* Debug */,
+				E2C2F807EE6A5405C82C3505 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		364C8036CDACB29E65BDB7BF /* Build configuration list for PBXNativeTarget "HappyWorkWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6F12CC1A1A009A46E3185357 /* Debug */,
+				60FEAE840043CC3A4C9373D4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BC61AB9BE1752A3C828DBAE2 /* Build configuration list for PBXProject "HappyWork" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DEF953CEEA0E5588713AE756 /* Debug */,
+				FA0B93573B5E0DD620AACB04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C0AC462FBBCE2145BB7D6EB5 /* Build configuration list for PBXNativeTarget "HappyWork" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4BA75E30FF834471B7CA2E0B /* Debug */,
+				A0A4C150F79BE0C9604FB7B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 90BDA568274C5F7D9A21D4DF /* Project object */;
+}
