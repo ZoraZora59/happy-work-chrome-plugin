@@ -35,12 +35,15 @@ final class EarningsService: ObservableObject {
         snapshot = .zero
     }
 
-    /// 会话进行中修改时薪（例如用户中途调整了配置）后，重新计算。
-    func updateRate(_ rate: Double) {
-        guard var s = session else { return }
-        s.hourlyRate = rate
-        session = s
+    func replaceSession(_ session: WorkSession) {
+        self.session = session
         refresh()
+        if !session.isComplete() { scheduleTimer() }
+    }
+
+    func enableOvertime() {
+        guard let session else { return }
+        replaceSession(session.withOvertimeActive(true))
     }
 
     private func scheduleTimer() {
@@ -54,6 +57,6 @@ final class EarningsService: ObservableObject {
         guard let s = session else { snapshot = .zero; return }
         let now = Date()
         snapshot = s.snapshot(at: now)
-        if s.isComplete(at: now) { timer?.invalidate(); timer = nil }  // 收工后停表
+        if s.isComplete(at: now) { timer?.invalidate(); timer = nil }  // 收工后停表，保留最终快照
     }
 }

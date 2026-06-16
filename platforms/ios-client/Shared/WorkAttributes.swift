@@ -6,8 +6,8 @@ import Foundation
 ///
 /// 设计要点（决定了锁屏实时性的边界）：
 /// - `startDate`/`endDate` 定义本次打工时段。Widget 用这个区间配合
-///   `Text(timerInterval:)` 和 `ProgressView(timerInterval:)` 渲染——**已工作时长
-///   与进度条会在锁屏上自动走动，即使 App 没有运行**，因为系统会自行插值时间类视图。
+///   `Text(timerInterval:)` 和 `ProgressView(timerInterval:)` 渲染日程进度——它会在锁屏
+///   自动走动，即使 App 没有运行。午休/晚休扣除和加班费只在 App 内计算。
 /// - 收入金额（`ContentState.earned`）是系统无法插值的任意数字，因此它是一个
 ///   **快照**：只在 App（或推送）调用 update 时刷新。详见 README「锁屏实时性的边界」。
 struct WorkAttributes: ActivityAttributes {
@@ -22,7 +22,7 @@ struct WorkAttributes: ActivityAttributes {
         var emoji: String
     }
 
-    /// 有效时薪（基础 + 折算后的年终奖），元/小时。
+    /// 有效时薪（由月薪、年终奖、计薪天数、有效工时折算），元/小时。
     var hourlyRate: Double
     /// 打工时段开始时间。
     var startDate: Date

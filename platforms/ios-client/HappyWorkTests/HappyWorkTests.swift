@@ -1,9 +1,6 @@
 import XCTest
 @testable import HappyWork
 
-/// 纯逻辑单测（无需真机/模拟器界面）。重点回归守护：
-/// 1) 年终奖按「全年」折算进时薪（历史上这里漏过 /12，导致时薪高估 12 倍）；
-/// 2) 收入/进度在收工时间封顶。
 @MainActor
 final class HappyWorkTests: XCTestCase {
 
@@ -12,49 +9,94 @@ final class HappyWorkTests: XCTestCase {
         return SettingsStore(defaults: UserDefaults(suiteName: suite)!)
     }
 
-    func testEffectiveHourlyRate_noBonus_equalsBase() {
+    private func day(_ hour: Int, _ minute: Int = 0) -> Date {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 6
+        components.day = 16
+        components.hour = hour
+        components.minute = minute
+        components.second = 0
+        return Calendar(identifier: .gregorian).date(from: components)!
+    }
+
+    func testEffectiveHourlyRate_usesMonthlySalaryAndPaidHours() {
         let store = ephemeralStore()
-        store.hourlyRate = 50
+        store.monthlySalary = 16000
         store.annualBonus = 0
-        XCTAssertEqual(store.effectiveHourlyRate, 50, accuracy: 0.0001)
+        store.monthlyPaidDays = 20
+        store.workStartMinute = 9 * 60
+        store.workEndMinute = 17 * 60
+        store.lunchBreakEnabled = false
+        store.dinnerBreakEnabled = false
+
+        XCTAssertEqual(store.effectiveHourlyRate, 100, accuracy: 0.001)
     }
 
     func testEffectiveHourlyRate_amortizesAnnualBonusAcrossFullYear() {
         let store = ephemeralStore()
-        store.hourlyRate = 50
-        // 全年奖金 20880 / (12 个月 × 174 小时/月) = 20880 / 2088 = 10 元/小时
-        store.annualBonus = 20880
-        XCTAssertEqual(store.effectiveHourlyRate, 60, accuracy: 0.01,
-                       "年终奖必须按全年折算（/12/月工时），而不是按月")
+        store.monthlySalary = 16000
+        store.annualBonus = 19200
+        store.monthlyPaidDays = 20
+        store.workStartMinute = 9 * 60
+        store.workEndMinute = 17 * 60
+        store.lunchBreakEnabled = false
+        store.dinnerBreakEnabled = false
+
+        XCTAssertEqual(store.effectiveHourlyRate, 110, accuracy: 0.001)
     }
 
-    func testEffectiveHourlyRate_neverNegative() {
-        let store = ephemeralStore()
-        store.hourlyRate = 0
-        store.annualBonus = 0
-        XCTAssertGreaterThanOrEqual(store.effectiveHourlyRate, 0)
+    func testWorkSessionSnapshot_excludesLunchBreak() {
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [WorkBreak(name: "午休", startMinute: 12 * 60, endMinute: 13 * 60)],
+                                  isOvertimeActive: false)
+
+        let duringLunch = session.snapshot(at: day(12, 30))
+        XCTAssertEqual(duringLunch.earned, 180, accuracy: 0.01)
+        XCTAssertTrue(duringLunch.isOnBreak)
+
+        let afterLunch = session.snapshot(at: day(14))
+        XCTAssertEqual(afterLunch.normalElapsed, 4 * 3600, accuracy: 0.01)
+        XCTAssertEqual(afterLunch.earned, 240, accuracy: 0.01)
+        XCTAssertEqual(afterLunch.progress, 0.5, accuracy: 0.001)
     }
 
-    func testWorkSessionSnapshot_oneHourIn() {
-        let start = Date(timeIntervalSince1970: 0)
-        let session = WorkSession(startDate: start,
-                                  endDate: start.addingTimeInterval(8 * 3600),
-                                  hourlyRate: 60)
-        let s = session.snapshot(at: start.addingTimeInterval(3600))
-        XCTAssertEqual(s.earned, 60, accuracy: 0.01)          // 1 小时 × 60
-        XCTAssertEqual(s.progress, 1.0 / 8.0, accuracy: 0.001) // 8 小时工作日的 1/8
+    func testWorkSessionSnapshot_addsAfterWorkOvertimeAndSkipsDinnerBreak() {
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [
+                                      WorkBreak(name: "午休", startMinute: 12 * 60, endMinute: 13 * 60),
+                                      WorkBreak(name: "晚休", startMinute: 18 * 60 + 30, endMinute: 19 * 60 + 30)
+                                  ],
+                                  isOvertimeActive: true)
+
+        let snap = session.snapshot(at: day(20))
+        XCTAssertEqual(snap.normalElapsed, 8 * 3600, accuracy: 0.01)
+        XCTAssertEqual(snap.overtimeElapsed, 3600, accuracy: 0.01)
+        XCTAssertEqual(snap.earned, 570, accuracy: 0.01)
+        XCTAssertTrue(snap.isOvertime)
+        XCTAssertFalse(session.isComplete(at: day(20)))
     }
 
-    func testWorkSessionSnapshot_capsAtWorkdayEnd() {
-        let start = Date(timeIntervalSince1970: 0)
-        let session = WorkSession(startDate: start,
-                                  endDate: start.addingTimeInterval(8 * 3600),
-                                  hourlyRate: 60)
-        let s = session.snapshot(at: start.addingTimeInterval(100 * 3600)) // 远超收工
-        XCTAssertEqual(s.earned, 60 * 8, accuracy: 0.01)  // 封顶在整日工资
-        XCTAssertEqual(s.progress, 1.0, accuracy: 0.0001) // 进度封顶 100%
-        XCTAssertEqual(s.mood, .harvest)
-        XCTAssertTrue(session.isComplete(at: start.addingTimeInterval(100 * 3600)))
+    func testWorkSessionSnapshot_finishesWithoutOvertime() {
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [WorkBreak(name: "午休", startMinute: 12 * 60, endMinute: 13 * 60)],
+                                  isOvertimeActive: false)
+
+        let snap = session.snapshot(at: day(20))
+        XCTAssertEqual(snap.earned, 480, accuracy: 0.01)
+        XCTAssertEqual(snap.progress, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(snap.mood, .harvest)
+        XCTAssertTrue(snap.isFinished)
+        XCTAssertTrue(session.isComplete(at: day(20)))
     }
 
     func testMoodStageProgression() {

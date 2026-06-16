@@ -1,6 +1,22 @@
 import Foundation
 import Combine
 
+enum SchedulePreset: String, CaseIterable, Identifiable, Codable {
+    case standard965
+    case long996
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .standard965: return "965"
+        case .long996: return "996"
+        case .custom: return "自定义"
+        }
+    }
+}
+
 /// 用户配置 + 进行中会话的持久化（UserDefaults），保证 App 重启后不丢。
 ///
 /// 这里**不需要 App Group**：Widget 的所有数据都通过 Live Activity 的 ContentState
@@ -10,61 +26,195 @@ import Combine
 final class SettingsStore: ObservableObject {
     private let defaults: UserDefaults
     private enum Key {
-        static let hourlyRate = "hourlyRate"
+        static let monthlySalary = "monthlySalary"
         static let annualBonus = "annualBonus"
-        static let workdayHours = "workdayHours"
-        static let sessionStart = "session.start"
-        static let sessionEnd = "session.end"
-        static let sessionRate = "session.rate"
+        static let monthlyPaidDays = "monthlyPaidDays"
+        static let schedulePreset = "schedulePreset"
+        static let workStartMinute = "workStartMinute"
+        static let workEndMinute = "workEndMinute"
+        static let lunchBreakEnabled = "lunchBreakEnabled"
+        static let lunchStartMinute = "lunchStartMinute"
+        static let lunchEndMinute = "lunchEndMinute"
+        static let dinnerBreakEnabled = "dinnerBreakEnabled"
+        static let dinnerStartMinute = "dinnerStartMinute"
+        static let dinnerEndMinute = "dinnerEndMinute"
+        static let afterWorkOvertimeEnabled = "afterWorkOvertimeEnabled"
+        static let afterWorkOvertimeMultiplier = "afterWorkOvertimeMultiplier"
+        static let activeSession = "session.active"
+
+        // 旧版兼容：从时薪迁移到月薪。
+        static let legacyHourlyRate = "hourlyRate"
     }
 
-    @Published var hourlyRate: Double { didSet { defaults.set(hourlyRate, forKey: Key.hourlyRate) } }
-    @Published var annualBonus: Double { didSet { defaults.set(annualBonus, forKey: Key.annualBonus) } }
-    @Published var workdayHours: Double { didSet { defaults.set(workdayHours, forKey: Key.workdayHours) } }
+    @Published var monthlySalary: Double { didSet { defaults.set(safeAmount(monthlySalary), forKey: Key.monthlySalary) } }
+    @Published var annualBonus: Double { didSet { defaults.set(safeAmount(annualBonus), forKey: Key.annualBonus) } }
+    @Published var monthlyPaidDays: Double { didSet { defaults.set(clamped(monthlyPaidDays, 1...31), forKey: Key.monthlyPaidDays) } }
+    @Published var schedulePreset: SchedulePreset {
+        didSet { defaults.set(schedulePreset.rawValue, forKey: Key.schedulePreset) }
+    }
+    @Published var workStartMinute: Int { didSet { defaults.set(clampedMinute(workStartMinute), forKey: Key.workStartMinute) } }
+    @Published var workEndMinute: Int { didSet { defaults.set(clampedMinute(workEndMinute), forKey: Key.workEndMinute) } }
+    @Published var lunchBreakEnabled: Bool { didSet { defaults.set(lunchBreakEnabled, forKey: Key.lunchBreakEnabled) } }
+    @Published var lunchStartMinute: Int { didSet { defaults.set(clampedMinute(lunchStartMinute), forKey: Key.lunchStartMinute) } }
+    @Published var lunchEndMinute: Int { didSet { defaults.set(clampedMinute(lunchEndMinute), forKey: Key.lunchEndMinute) } }
+    @Published var dinnerBreakEnabled: Bool { didSet { defaults.set(dinnerBreakEnabled, forKey: Key.dinnerBreakEnabled) } }
+    @Published var dinnerStartMinute: Int { didSet { defaults.set(clampedMinute(dinnerStartMinute), forKey: Key.dinnerStartMinute) } }
+    @Published var dinnerEndMinute: Int { didSet { defaults.set(clampedMinute(dinnerEndMinute), forKey: Key.dinnerEndMinute) } }
+    @Published var afterWorkOvertimeEnabled: Bool {
+        didSet { defaults.set(afterWorkOvertimeEnabled, forKey: Key.afterWorkOvertimeEnabled) }
+    }
+    @Published var afterWorkOvertimeMultiplier: Double {
+        didSet { defaults.set(clamped(afterWorkOvertimeMultiplier, 0...5), forKey: Key.afterWorkOvertimeMultiplier) }
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.hourlyRate = defaults.object(forKey: Key.hourlyRate) as? Double ?? 50
+        let legacyHourlyRate = defaults.object(forKey: Key.legacyHourlyRate) as? Double
+        self.monthlySalary = defaults.object(forKey: Key.monthlySalary) as? Double
+            ?? (legacyHourlyRate.map { $0 * 21.75 * 8 } ?? 10000)
         self.annualBonus = defaults.object(forKey: Key.annualBonus) as? Double ?? 0
-        self.workdayHours = defaults.object(forKey: Key.workdayHours) as? Double ?? 8
+        self.monthlyPaidDays = defaults.object(forKey: Key.monthlyPaidDays) as? Double ?? 21.75
+        let presetRaw = defaults.string(forKey: Key.schedulePreset) ?? SchedulePreset.standard965.rawValue
+        self.schedulePreset = SchedulePreset(rawValue: presetRaw) ?? .standard965
+        self.workStartMinute = defaults.object(forKey: Key.workStartMinute) as? Int ?? 9 * 60
+        self.workEndMinute = defaults.object(forKey: Key.workEndMinute) as? Int ?? 18 * 60
+        self.lunchBreakEnabled = defaults.object(forKey: Key.lunchBreakEnabled) as? Bool ?? true
+        self.lunchStartMinute = defaults.object(forKey: Key.lunchStartMinute) as? Int ?? 12 * 60
+        self.lunchEndMinute = defaults.object(forKey: Key.lunchEndMinute) as? Int ?? 13 * 60 + 30
+        self.dinnerBreakEnabled = defaults.object(forKey: Key.dinnerBreakEnabled) as? Bool ?? true
+        self.dinnerStartMinute = defaults.object(forKey: Key.dinnerStartMinute) as? Int ?? 18 * 60 + 30
+        self.dinnerEndMinute = defaults.object(forKey: Key.dinnerEndMinute) as? Int ?? 19 * 60 + 30
+        self.afterWorkOvertimeEnabled = defaults.object(forKey: Key.afterWorkOvertimeEnabled) as? Bool ?? true
+        self.afterWorkOvertimeMultiplier = defaults.object(forKey: Key.afterWorkOvertimeMultiplier) as? Double ?? 1.5
     }
 
-    /// 折算年终奖用的标准月工时：21.75 工作日/月 × 8 小时/日 ≈ 174 小时/月。
-    private let standardMonthlyWorkHours: Double = 21.75 * 8
+    var monthlyIncome: Double {
+        safeAmount(monthlySalary) + safeAmount(annualBonus) / 12.0
+    }
 
-    /// 有效时薪 = 基础时薪 + 年终奖按「全年」折算到每小时的部分。
-    /// 年终奖是**一年一次**，所以要先 /12 折成每月，再 / 月工时折成每小时。
-    /// （旧实现写成 `annualBonus / 月工时`，漏了 /12，会把时薪高估 12 倍，这里已修正。）
+    var breaks: [WorkBreak] {
+        var items: [WorkBreak] = []
+        if lunchBreakEnabled {
+            items.append(WorkBreak(name: "午休", startMinute: lunchStartMinute, endMinute: lunchEndMinute))
+        }
+        if dinnerBreakEnabled {
+            items.append(WorkBreak(name: "晚休", startMinute: dinnerStartMinute, endMinute: dinnerEndMinute))
+        }
+        return items.filter { $0.endMinute > $0.startMinute }
+    }
+
+    var normalWorkSeconds: TimeInterval {
+        let start = clampedMinute(workStartMinute)
+        let end = clampedMinute(workEndMinute)
+        guard end > start else { return 1 }
+        let gross = TimeInterval((end - start) * 60)
+        let breakSeconds = breaks.reduce(0.0) { total, item in
+            total + TimeInterval(overlapMinutes(start...end, item.startMinute...item.endMinute) * 60)
+        }
+        return max(gross - breakSeconds, 1)
+    }
+
+    var normalWorkHours: Double {
+        normalWorkSeconds / 3600.0
+    }
+
+    /// 有效时薪 = (月薪 + 年终奖/12) / (每月计薪天数 × 每天有效计薪小时)。
     var effectiveHourlyRate: Double {
-        max(0, hourlyRate + annualBonus / 12.0 / standardMonthlyWorkHours)
+        let monthlyHours = clamped(monthlyPaidDays, 1...31) * normalWorkHours
+        return monthlyHours > 0 ? monthlyIncome / monthlyHours : 0
     }
 
     /// 持久化的进行中会话（无则为 nil）。
     var activeSession: WorkSession? {
         get {
-            guard let start = defaults.object(forKey: Key.sessionStart) as? Date,
-                  let end = defaults.object(forKey: Key.sessionEnd) as? Date else { return nil }
-            let rate = defaults.object(forKey: Key.sessionRate) as? Double ?? effectiveHourlyRate
-            return WorkSession(startDate: start, endDate: end, hourlyRate: rate)
+            guard let data = defaults.data(forKey: Key.activeSession) else { return nil }
+            return try? JSONDecoder().decode(WorkSession.self, from: data)
         }
         set {
-            if let s = newValue {
-                defaults.set(s.startDate, forKey: Key.sessionStart)
-                defaults.set(s.endDate, forKey: Key.sessionEnd)
-                defaults.set(s.hourlyRate, forKey: Key.sessionRate)
+            if let newValue, let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: Key.activeSession)
             } else {
-                defaults.removeObject(forKey: Key.sessionStart)
-                defaults.removeObject(forKey: Key.sessionEnd)
-                defaults.removeObject(forKey: Key.sessionRate)
+                defaults.removeObject(forKey: Key.activeSession)
             }
         }
     }
 
-    /// 以当前配置生成一个从 `start` 开始、时长为 `workdayHours` 的新会话。
-    func makeSession(startingAt start: Date = Date()) -> WorkSession {
-        let seconds = max(workdayHours, 0.1) * 3600
-        return WorkSession(startDate: start,
-                           endDate: start.addingTimeInterval(seconds),
-                           hourlyRate: effectiveHourlyRate)
+    func applyPreset(_ preset: SchedulePreset) {
+        schedulePreset = preset
+        switch preset {
+        case .standard965:
+            workStartMinute = 9 * 60
+            workEndMinute = 18 * 60
+            monthlyPaidDays = 21.75
+            lunchBreakEnabled = true
+            lunchStartMinute = 12 * 60
+            lunchEndMinute = 13 * 60 + 30
+            dinnerBreakEnabled = true
+            dinnerStartMinute = 18 * 60 + 30
+            dinnerEndMinute = 19 * 60 + 30
+        case .long996:
+            workStartMinute = 9 * 60
+            workEndMinute = 21 * 60
+            monthlyPaidDays = 26
+            lunchBreakEnabled = true
+            lunchStartMinute = 12 * 60
+            lunchEndMinute = 13 * 60 + 30
+            dinnerBreakEnabled = true
+            dinnerStartMinute = 18 * 60 + 30
+            dinnerEndMinute = 19 * 60 + 30
+        case .custom:
+            break
+        }
     }
+
+    /// 以当前劳动规则生成今天的会话；从配置的上班时间开始，而不是从打开 App 的时刻开始。
+    func makeSession(for date: Date = Date(), calendar: Calendar = .current) -> WorkSession {
+        let start = Self.date(on: date, minuteOfDay: clampedMinute(workStartMinute), calendar: calendar)
+        let endMinute = max(clampedMinute(workEndMinute), clampedMinute(workStartMinute) + 1)
+        let end = Self.date(on: date, minuteOfDay: endMinute, calendar: calendar)
+        return WorkSession(startDate: start,
+                           endDate: end,
+                           hourlyRate: effectiveHourlyRate,
+                           overtimeMultiplier: afterWorkOvertimeMultiplier,
+                           breaks: breaks,
+                           isOvertimeActive: false)
+    }
+
+    static func date(on date: Date = Date(), minuteOfDay: Int, calendar: Calendar = .current) -> Date {
+        let minute = clampedMinute(minuteOfDay)
+        var components = calendar.dateComponents([.year, .month, .day], from: date)
+        components.hour = minute / 60
+        components.minute = minute % 60
+        components.second = 0
+        return calendar.date(from: components) ?? date
+    }
+
+    static func displayTime(_ minuteOfDay: Int) -> String {
+        let minute = clampedMinute(minuteOfDay)
+        return String(format: "%02d:%02d", minute / 60, minute % 60)
+    }
+
+    static func minuteOfDay(from date: Date, calendar: Calendar = .current) -> Int {
+        let components = calendar.dateComponents([.hour, .minute], from: date)
+        return (components.hour ?? 0) * 60 + (components.minute ?? 0)
+    }
+}
+
+private func safeAmount(_ value: Double) -> Double {
+    value.isFinite ? max(value, 0) : 0
+}
+
+private func clamped(_ value: Double, _ range: ClosedRange<Double>) -> Double {
+    guard value.isFinite else { return range.lowerBound }
+    return min(max(value, range.lowerBound), range.upperBound)
+}
+
+private func clampedMinute(_ value: Int) -> Int {
+    min(max(value, 0), 23 * 60 + 59)
+}
+
+private func overlapMinutes(_ first: ClosedRange<Int>, _ second: ClosedRange<Int>) -> Int {
+    let start = max(first.lowerBound, second.lowerBound)
+    let end = min(first.upperBound, second.upperBound)
+    return max(0, end - start)
 }

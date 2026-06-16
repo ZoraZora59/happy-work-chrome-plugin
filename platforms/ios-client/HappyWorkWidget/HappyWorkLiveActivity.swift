@@ -4,9 +4,8 @@ import SwiftUI
 
 /// 锁屏与动态岛的 Live Activity 渲染。
 ///
-/// 关键：**已工作时长**用 `Text(timerInterval:)`、**进度条**用 `ProgressView(timerInterval:)`，
-/// 这两类系统计时视图会在锁屏上自动走动（即使 App 没运行）；**收入金额**是 ContentState
-/// 里的快照，只在 App/推送更新时变化，并附「截至 HH:mm」说明。
+/// 关键：系统计时视图只能自动推进日程时间；App 内收入才会扣除午休/晚休并计算加班费。
+/// **收入金额**是 ContentState 里的快照，只在 App/推送更新时变化，并附「截至 HH:mm」说明。
 struct HappyWorkLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkAttributes.self) { context in
@@ -27,7 +26,7 @@ struct HappyWorkLiveActivity: Widget {
                         ProgressView(timerInterval: context.attributes.timerRange, countsDown: false)
                             .tint(.green)
                         HStack {
-                            Text(context.state.mood)
+                            Text("日程进度")
                             Spacer()
                             Text(timerInterval: context.attributes.timerRange, countsDown: false)
                                 .monospacedDigit()
@@ -73,7 +72,7 @@ private struct LockScreenView: View {
                 .tint(.green)
 
             HStack(spacing: 4) {
-                Text("已工作")
+                Text("日程进度")
                 Text(timerInterval: context.attributes.timerRange, countsDown: false)
                     .monospacedDigit()
                 Spacer()
