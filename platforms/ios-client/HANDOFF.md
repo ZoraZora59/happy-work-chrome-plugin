@@ -4,7 +4,7 @@
 > 全量构建通过、单测全绿、模拟器实跑**的完整工程。**除「Apple 开发者账号 / 签名 / 上架」外，
 > 其余全部就绪。**
 
-- 分支：`feat/ios-client-buildable`（commit `f8bc552`）— **本地已提交，未 push**
+- 分支：`feat/ios-client-buildable`（已 push 到 origin）— **现已合并入 `master`**
 - 工程位置：`platforms/ios-client/`
 - 技术栈：SwiftUI + ActivityKit（Live Activity）+ WidgetKit，XcodeGen 管理工程，部署目标 iOS 16.2
 
@@ -36,7 +36,11 @@
   （如逐秒增长的金额）自动跳动**。要逐秒跳只能上推送（见 §6）。
 - ActivityKit 升级到 iOS 16.2 正式 API（`request(content:)` / `ActivityContent` / `update` / `end`），
   App 重启后通过 `Activity.activities` **重连**仍存活的活动。
-- 配置（时薪、年终奖、每日工时）与进行中会话用 **UserDefaults 持久化**，重启自动恢复。
+- 配置（月薪、年终奖、每月计薪天数、作息、午休/晚休、加班倍数、日夜主题）与进行中会话、
+  当天停止记录用 **UserDefaults 持久化**，重启自动恢复。
+- **手动停止计薪 + 当天恢复**：点「结束打工」即停表并定格当天最终收入；当天重开 App 恢复这笔收入，
+  跨天自动清零（修复「停止计薪后当日收入清零」）。
+- **日间 / 夜间主题**：首页一键切换浅色 / 深色，选择本地持久化。
 - **修复年终奖折算 bug**：按全年 `/12/月工时` 折算（旧实现漏 `/12`，时薪高估约 12 倍）。
 
 ### 文档
@@ -49,7 +53,7 @@
 |---|---|---|
 | 两个 target 编译 | iOS 16.2 SDK `swiftc -typecheck` | ✅ 均 exit 0 |
 | 全量构建 | `xcodebuild build`（iPhone 17 Pro 模拟器） | ✅ `** BUILD SUCCEEDED **`（含资源/图标编译、链接 App 与 .appex） |
-| 单元测试 | `xcodebuild test`（模拟器实跑 6 个用例） | ✅ `** TEST SUCCEEDED **`（折算/封顶/心情映射全过） |
+| 单元测试 | `xcodebuild test`（模拟器实跑 13 个用例） | ✅ `** TEST SUCCEEDED **`（折算/封顶/停止恢复/心情映射全过） |
 | 实际运行 | 模拟器安装 + 启动 + 截图 | ✅ 首页 UI 正常渲染 |
 | 代码评审 | 多视角对抗式 review + 复核 | ✅ 无真实 bug；评审建议已落地（隐私清单、scheme、测试等） |
 
@@ -84,10 +88,10 @@ platforms/ios-client/
 cd platforms/ios-client && open HappyWork.xcodeproj   # 选 iOS 16.2+ 模拟器 Run
 ```
 
-**必改两处（上架/真机前）：**
-1. `project.yml` 里 `options.bundleIdPrefix`：`com.example` → 你拥有的反向域名（如 `com.yourname`），
-   改后 `xcodegen generate` 重建。⚠️ Widget id 必须是 App id 的子级。
-2. `DEVELOPMENT_TEAM`：填你的 10 位 Team ID（或在 Xcode Signing & Capabilities 选 Team）。
+**必改两处（上架/真机前；工程当前是打包所用个人账号的值）：**
+1. `project.yml` 里 `options.bundleIdPrefix`：当前 `com.happywork.an97555w6c` → 你拥有的反向域名
+   （如 `com.yourname`），改后 `xcodegen generate` 重建。⚠️ Widget id 必须是 App id 的子级。
+2. `DEVELOPMENT_TEAM`：当前 `AN97555W6C` → 你自己的 10 位 Team ID（或在 Xcode Signing & Capabilities 选 Team）。
 
 **三档能力边界：**
 - **模拟器**：无需账号 ✅（已验证）。
@@ -107,4 +111,4 @@ cd platforms/ios-client && open HappyWork.xcodeproj   # 选 iOS 16.2+ 模拟器 
 - 若 Xcode 报 `No available simulator runtimes`：到 **Xcode › Settings › Components** 下载一个
   iOS 模拟器运行时（编译 App 图标资源也需要它）。
 - 构建期间用过 `brew install xcodegen`（仅在重新生成工程时需要；可 `brew uninstall xcodegen` 还原）。
-- 分支 `feat/ios-client-buildable` 尚未 push；需要的话可推送并开 PR。
+- 分支 `feat/ios-client-buildable` 已 push 到 origin 并合并入 `master`。

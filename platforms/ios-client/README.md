@@ -61,12 +61,17 @@ platforms/ios-client/
 ## 功能
 
 - **月薪优先**：用户填月薪、年终奖和每月计薪天数，App 自动折算有效时薪；旧版时薪配置会
-  自动迁移成月薪估算值。
-- **午休 / 晚休自动扣除**：默认 965 作息、午休 12:00-13:30、晚休 18:30-19:30；
-  可切换 996 或自定义作息。休息时间不计薪。
-- **下班后加班费**：下班后点「我在加班」即可按加班倍数累加收入；默认 1.5 倍。
+  自动迁移成月薪估算值（年终奖按全年 /12 摊到每月）。
+- **作息可配置**：默认 965（午休 12:00-13:30、晚休 18:30-19:30），一键切 996 或自定义上下班时间；
+  切换预设会同步调整每月计薪天数（965 → 21.75，996 → 26）。分钟会规整到偷懒友好的刻度。
+- **午休 / 晚休自动扣除**：休息段从计薪时长中扣除，休息时间不计薪，并在锁屏进度条上标记断点。
+- **下班后加班费**：下班后点「开启加班费」即可按加班倍数累加收入；倍数可在设置里调，默认 1.5 倍。
+- **手动停止计薪**：点「结束打工」即停表并定格当天最终收入；当天重开 App 会恢复这笔收入，
+  跨天后自动清零（不会把昨天的收入带到今天）。
 - **计薪与心情**：按有效计薪时长实时计算收入；进度（0~100%，按正常工时）映射心情阶段：
-  冷静搬砖 🙂 → 专注冲刺 🚀 → 灵感爆棚 🔥 → 收获满满 🤩。
+  冷静搬砖 🙂 → 专注冲刺 🚀 → 灵感爆棚 🔥 → 收获满满 🤩。状态细分为
+  还没上班 / 计薪中 / 休息中 / 加班中 / 今日已收工。
+- **日间 / 夜间主题**：首页一键切换浅色 / 深色界面，选择本地持久化。
 - **锁屏 / 灵动岛**：下班倒计时和日程进度条会**自动走动**；收入明确标记为快照，打开 App 后自动刷新（见下）。
 - **重启恢复**：会话与配置存在本地，App 重启后自动恢复，并重新接管仍存活的 Live Activity。
 
@@ -104,8 +109,9 @@ platforms/ios-client/
 
 ## 测试
 
-`HappyWorkTests` 是纯逻辑单测（无需界面），覆盖：月薪折算、年终奖折算、午休扣除、
-晚休扣除、下班后加班费、收入/进度在收工时封顶、心情映射。
+`HappyWorkTests` 是纯逻辑单测（无需界面），共 13 个用例，覆盖：月薪折算、年终奖按全年折算、
+作息分钟规整、作息摘要、日夜主题持久化、中文倒计时格式化、午休扣除、晚休扣除、下班后加班费、
+收入/进度在收工时封顶、手动停止保留最终快照、停止记录当天恢复与跨天过期、心情映射。
 
 ```bash
 # 需要完整 Xcode（命令行工具不含模拟器/XCTest）
@@ -131,11 +137,12 @@ xcodebuild test -scheme HappyWork -destination 'platform=iOS Simulator,name=iPho
 
 ### 第 3 档 · 上架 App Store — 需要付费开发者账号（$99/年）
 
-**必改项（交给你前我用的是占位值）：**
-- `project.yml` 里 `options.bundleIdPrefix` 把 `com.example` 换成你拥有的反向域名（如 `com.yourname`），
-  改完 `xcodegen generate` 重建；或直接在 Xcode 改两个 target 的 Bundle Identifier。
-  ⚠️ **Widget 的 id 必须是 App id 的子级**（`xxx.happywork` / `xxx.happywork.widget`），否则上传校验失败。
-- `project.yml` 里 `DEVELOPMENT_TEAM` 填你的 10 位 Team ID（或在 Xcode Signing & Capabilities 选 Team）。
+**必改项（工程当前写的是打包时所用个人账号的值，上架/真机前请换成你自己的）：**
+- `project.yml` 里 `options.bundleIdPrefix` 当前为 `com.happywork.an97555w6c`，换成你拥有的反向域名
+  （如 `com.yourname`），改完 `xcodegen generate` 重建；或直接在 Xcode 改两个 target 的 Bundle Identifier。
+  ⚠️ **Widget 的 id 必须是 App id 的子级**（`xxx.app` / `xxx.app.widget`），否则上传校验失败。
+- `project.yml` 里 `DEVELOPMENT_TEAM` 当前为 `AN97555W6C`（个人 Team），填你自己的 10 位 Team ID
+  （或在 Xcode Signing & Capabilities 选 Team）。
 
 **上架流程（你来做）：**
 1. [Apple Developer](https://developer.apple.com) 注册付费会员（$99/年）。
