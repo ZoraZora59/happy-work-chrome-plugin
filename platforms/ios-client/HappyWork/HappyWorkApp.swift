@@ -1,18 +1,25 @@
 import SwiftUI
-import ActivityKit
 
 @main
 struct HappyWorkApp: App {
-    @StateObject private var earningsService = EarningsService()
-    @StateObject private var activityManager = LiveActivityManager()
+    @StateObject private var settings = SettingsStore()
+    @StateObject private var earnings = EarningsService()
+    @StateObject private var liveActivity = LiveActivityManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(earningsService)
-                .environmentObject(activityManager)
-                .onAppear {
-                    activityManager.attachService(earningsService)
+                .environmentObject(settings)
+                .environmentObject(earnings)
+                .environmentObject(liveActivity)
+                .task {
+                    // 恢复重启前仍存活的会话与 Live Activity。
+                    liveActivity.restore()
+                    if let session = settings.activeSession {
+                        earnings.resume(session)
+                    } else if let record = settings.stoppedWorkRecord() {
+                        earnings.restoreStopped(record)
+                    }
                 }
         }
     }

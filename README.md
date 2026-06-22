@@ -4,7 +4,7 @@
 - 浏览器插件（Chrome 扩展，当前完整实现）
 - 安卓客户端（待实现）
 - 鸿蒙客户端（待实现）
-- iOS 客户端（待实现）
+- iOS 客户端（SwiftUI + ActivityKit 实时活动，已可在模拟器构建运行；上架待签名）
 
 ## 目录结构
 
@@ -13,7 +13,7 @@ platforms/
 ├── browser-extension/   # 现有 Chrome 插件代码与文档
 ├── android-client/      # 安卓客户端骨架与需求说明
 ├── harmony-client/      # 鸿蒙客户端骨架与需求说明
-└── ios-client/          # iOS 客户端骨架与需求说明
+└── ios-client/          # iOS 客户端（SwiftUI + ActivityKit，XcodeGen 工程）
 ```
 
 ## 开发与构建
@@ -33,8 +33,15 @@ platforms/
    npm run build
    ```
 
+### iOS 客户端
+```bash
+cd platforms/ios-client
+open HappyWork.xcodeproj   # 选 iOS 16.2+ 模拟器直接 Run，无需 Apple 账号
+```
+真机调试与上架（签名步骤）见 [`platforms/ios-client/README.md`](platforms/ios-client/README.md)。
+
 ### 其他客户端
-- 每个客户端目录下提供了初步的结构与说明文档，可按照文档补充对应平台的实现。
+- 安卓 / 鸿蒙客户端目录下提供了初步的结构与说明文档，可按照文档补充对应平台的实现。
 
 ## 协作说明
 - 代码、文档均使用中文。

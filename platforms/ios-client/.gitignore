@@ -1,0 +1,12 @@
+# Xcode / XcodeGen
+## 用户级状态（不入库）。HappyWork.xcodeproj 本身入库，方便直接打开。
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+.build/
+*.xcscmblueprint
+*.xccheckout
+
+# macOS
+.DS_Store

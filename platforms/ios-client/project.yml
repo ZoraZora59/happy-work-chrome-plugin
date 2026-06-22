@@ -1,0 +1,96 @@
+# XcodeGen 工程定义（真实来源）。生成/重建 Xcode 工程：
+#   brew install xcodegen   # 仅首次
+#   cd platforms/ios-client && xcodegen generate
+#   open HappyWork.xcodeproj
+# 仓库里已附带生成好的 HappyWork.xcodeproj，可直接打开；改了本文件后用上面命令重建。
+name: HappyWork
+
+options:
+  bundleIdPrefix: com.happywork.an97555w6c
+  deploymentTarget:
+    iOS: "16.2"          # Live Activity / 动态岛完整 API 的安全下限
+  createIntermediateGroups: true
+  developmentLanguage: zh-Hans   # 默认中文，与界面/显示名一致
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: AN97555W6C
+
+targets:
+
+  # ---------- iOS App ----------
+  HappyWork:
+    type: application
+    platform: iOS
+    sources:
+      - path: HappyWork
+      - path: Shared          # WorkAttributes.swift 同时编入 App 与 Widget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.happywork.an97555w6c.app
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: HappyWork/Info.plist
+      properties:
+        CFBundleDisplayName: 打工人加油站
+        UILaunchScreen: {}                 # 无 storyboard 的默认启动屏
+        NSSupportsLiveActivities: true     # 实时活动开关只放在 App 上
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    dependencies:
+      # 把 Widget Extension 嵌入 App 的 PlugIns（App target 默认 embed: true，这里显式写明）
+      - target: HappyWorkWidget
+        embed: true
+        codeSign: true
+
+  # ---------- WidgetKit Extension（承载 Live Activity）----------
+  HappyWorkWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: HappyWorkWidget
+      - path: Shared
+    settings:
+      base:
+        # 必须以 App 的 bundle id 为前缀，否则真机/TestFlight 校验会失败
+        PRODUCT_BUNDLE_IDENTIFIER: com.happywork.an97555w6c.app.widget
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: HappyWorkWidget/Info.plist
+      properties:
+        CFBundleDisplayName: 打工人加油站
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  # ---------- 单元测试（纯逻辑，无需真机界面）----------
+  HappyWorkTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: HappyWorkTests
+    dependencies:
+      - target: HappyWork
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.happywork.an97555w6c.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+# 生成共享 scheme，便于直接 Run，也支持 `xcodebuild -scheme HappyWork test`
+schemes:
+  HappyWork:
+    build:
+      targets:
+        HappyWork: all
+        HappyWorkTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - HappyWorkTests
+    archive:
+      config: Release
