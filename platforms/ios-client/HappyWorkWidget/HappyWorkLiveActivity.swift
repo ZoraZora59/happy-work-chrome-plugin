@@ -122,17 +122,6 @@ private struct LockScreenView: View {
 
             WidgetProgressStrip(timerRange: context.attributes.timerRange,
                                 breakSegments: context.attributes.breakSegments)
-
-            HStack {
-                Text("打开 App 自动刷新金额")
-                Spacer()
-                if context.isStale {
-                    Text("金额待刷新")
-                        .foregroundStyle(WidgetPalette.overtime)
-                }
-            }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
         }
         .padding()
     }
@@ -142,21 +131,27 @@ private struct WidgetProgressStrip: View {
     var timerRange: ClosedRange<Date>
     var breakSegments: [WorkAttributes.BreakSegment]
 
+    /// 休息标记的厚度，与系统线性进度条轨道保持一致，避免凸出成「大砖头」。
+    private let markerHeight: CGFloat = 5
+
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
             ZStack(alignment: .leading) {
-                ProgressView(timerInterval: timerRange, countsDown: false)
-                    .progressViewStyle(.linear)
-                    .tint(WidgetPalette.accent)
+                // 传空的 label / currentValueLabel，隐藏系统自带的计时文字
+                // （否则会渲染出一段 HH:MM:SS 溢出到下一行）。
+                ProgressView(timerInterval: timerRange, countsDown: false) {
+                    EmptyView()
+                } currentValueLabel: {
+                    EmptyView()
+                }
+                .progressViewStyle(.linear)
+                .tint(WidgetPalette.accent)
                 ForEach(breakSegments, id: \.self) { segment in
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    RoundedRectangle(cornerRadius: markerHeight / 2, style: .continuous)
                         .fill(WidgetPalette.restSegment)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                .stroke(WidgetPalette.restBorder, lineWidth: 1)
-                        }
-                        .frame(width: max(width * (segment.endRatio - segment.startRatio), 3))
+                        .frame(width: max(width * (segment.endRatio - segment.startRatio), 2),
+                               height: markerHeight)
                         .offset(x: width * segment.startRatio)
                 }
             }
@@ -168,7 +163,6 @@ private struct WidgetProgressStrip: View {
 private enum WidgetPalette {
     static let surface = Color(red: 0.07, green: 0.08, blue: 0.10)
     static let accent = Color(red: 0.22, green: 0.95, blue: 0.55)
-    static let restSegment = Color(red: 0.95, green: 0.64, blue: 0.26).opacity(0.48)
-    static let restBorder = Color(red: 1.00, green: 0.82, blue: 0.45).opacity(0.86)
+    static let restSegment = Color(red: 0.96, green: 0.66, blue: 0.30)
     static let overtime = Color(red: 1.0, green: 0.58, blue: 0.24)
 }
