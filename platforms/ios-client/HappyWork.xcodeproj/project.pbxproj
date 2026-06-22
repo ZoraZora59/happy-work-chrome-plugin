@@ -229,15 +229,15 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					7330CBE4D093632C9F972D3C = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = AN97555W6C;
 						ProvisioningStyle = Automatic;
 					};
 					74EFBC6573C9E990E38D277A = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = AN97555W6C;
 						ProvisioningStyle = Automatic;
 					};
 					B06E2E88149809298411A43E = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = AN97555W6C;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -344,7 +344,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork;
+				PRODUCT_BUNDLE_IDENTIFIER = com.happywork.an97555w6c.app;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -360,7 +360,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork.widget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.happywork.an97555w6c.app.widget;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -376,7 +376,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork.widget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.happywork.an97555w6c.app.widget;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -392,7 +392,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.happywork.an97555w6c.app.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HappyWork.app/HappyWork";
@@ -410,7 +410,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork;
+				PRODUCT_BUNDLE_IDENTIFIER = com.happywork.an97555w6c.app;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -453,7 +453,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = AN97555W6C;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -493,7 +493,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.happywork.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.happywork.an97555w6c.app.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HappyWork.app/HappyWork";
@@ -537,7 +537,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = AN97555W6C;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

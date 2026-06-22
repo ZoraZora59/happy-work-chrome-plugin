@@ -6,8 +6,7 @@
 name: HappyWork
 
 options:
-  # ⚠️ 占位前缀。真机调试/上架前请改成你自己的反向域名（如 com.yourname）。
-  bundleIdPrefix: com.example
+  bundleIdPrefix: com.happywork.an97555w6c
   deploymentTarget:
     iOS: "16.2"          # Live Activity / 动态岛完整 API 的安全下限
   createIntermediateGroups: true
@@ -19,8 +18,7 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
-    # 留空：模拟器无需签名即可运行。真机/上架时填入你的 10 位 Team ID。
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: AN97555W6C
 
 targets:
 
@@ -33,7 +31,7 @@ targets:
       - path: Shared          # WorkAttributes.swift 同时编入 App 与 Widget
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.happywork
+        PRODUCT_BUNDLE_IDENTIFIER: com.happywork.an97555w6c.app
         GENERATE_INFOPLIST_FILE: NO
     info:
       path: HappyWork/Info.plist
@@ -59,7 +57,7 @@ targets:
     settings:
       base:
         # 必须以 App 的 bundle id 为前缀，否则真机/TestFlight 校验会失败
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.happywork.widget
+        PRODUCT_BUNDLE_IDENTIFIER: com.happywork.an97555w6c.app.widget
         GENERATE_INFOPLIST_FILE: NO
     info:
       path: HappyWorkWidget/Info.plist
@@ -78,7 +76,7 @@ targets:
       - target: HappyWork
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.happywork.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.happywork.an97555w6c.app.tests
         GENERATE_INFOPLIST_FILE: YES
 
 # 生成共享 scheme，便于直接 Run，也支持 `xcodebuild -scheme HappyWork test`

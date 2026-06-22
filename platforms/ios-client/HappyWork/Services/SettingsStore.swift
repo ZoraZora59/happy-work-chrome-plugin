@@ -17,6 +17,41 @@ enum SchedulePreset: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum AppAppearance: String, CaseIterable, Identifiable, Codable {
+    case day
+    case night
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .day: return "日间"
+        case .night: return "夜间"
+        }
+    }
+
+    var toggleTitle: String {
+        switch self {
+        case .day: return "日间"
+        case .night: return "夜间"
+        }
+    }
+
+    var toggleSystemImage: String {
+        switch self {
+        case .day: return "moon"
+        case .night: return "sun.max"
+        }
+    }
+
+    var next: AppAppearance {
+        switch self {
+        case .day: return .night
+        case .night: return .day
+        }
+    }
+}
+
 /// 用户配置 + 进行中会话的持久化（UserDefaults），保证 App 重启后不丢。
 ///
 /// 这里**不需要 App Group**：Widget 的所有数据都通过 Live Activity 的 ContentState
@@ -40,6 +75,7 @@ final class SettingsStore: ObservableObject {
         static let dinnerEndMinute = "dinnerEndMinute"
         static let afterWorkOvertimeEnabled = "afterWorkOvertimeEnabled"
         static let afterWorkOvertimeMultiplier = "afterWorkOvertimeMultiplier"
+        static let appAppearance = "appAppearance"
         static let activeSession = "session.active"
 
         // 旧版兼容：从时薪迁移到月薪。
@@ -52,19 +88,22 @@ final class SettingsStore: ObservableObject {
     @Published var schedulePreset: SchedulePreset {
         didSet { defaults.set(schedulePreset.rawValue, forKey: Key.schedulePreset) }
     }
-    @Published var workStartMinute: Int { didSet { defaults.set(clampedMinute(workStartMinute), forKey: Key.workStartMinute) } }
-    @Published var workEndMinute: Int { didSet { defaults.set(clampedMinute(workEndMinute), forKey: Key.workEndMinute) } }
+    @Published var workStartMinute: Int { didSet { normalizeAndStoreMinute(\.workStartMinute, key: Key.workStartMinute) } }
+    @Published var workEndMinute: Int { didSet { normalizeAndStoreMinute(\.workEndMinute, key: Key.workEndMinute) } }
     @Published var lunchBreakEnabled: Bool { didSet { defaults.set(lunchBreakEnabled, forKey: Key.lunchBreakEnabled) } }
-    @Published var lunchStartMinute: Int { didSet { defaults.set(clampedMinute(lunchStartMinute), forKey: Key.lunchStartMinute) } }
-    @Published var lunchEndMinute: Int { didSet { defaults.set(clampedMinute(lunchEndMinute), forKey: Key.lunchEndMinute) } }
+    @Published var lunchStartMinute: Int { didSet { normalizeAndStoreMinute(\.lunchStartMinute, key: Key.lunchStartMinute) } }
+    @Published var lunchEndMinute: Int { didSet { normalizeAndStoreMinute(\.lunchEndMinute, key: Key.lunchEndMinute) } }
     @Published var dinnerBreakEnabled: Bool { didSet { defaults.set(dinnerBreakEnabled, forKey: Key.dinnerBreakEnabled) } }
-    @Published var dinnerStartMinute: Int { didSet { defaults.set(clampedMinute(dinnerStartMinute), forKey: Key.dinnerStartMinute) } }
-    @Published var dinnerEndMinute: Int { didSet { defaults.set(clampedMinute(dinnerEndMinute), forKey: Key.dinnerEndMinute) } }
+    @Published var dinnerStartMinute: Int { didSet { normalizeAndStoreMinute(\.dinnerStartMinute, key: Key.dinnerStartMinute) } }
+    @Published var dinnerEndMinute: Int { didSet { normalizeAndStoreMinute(\.dinnerEndMinute, key: Key.dinnerEndMinute) } }
     @Published var afterWorkOvertimeEnabled: Bool {
         didSet { defaults.set(afterWorkOvertimeEnabled, forKey: Key.afterWorkOvertimeEnabled) }
     }
     @Published var afterWorkOvertimeMultiplier: Double {
         didSet { defaults.set(clamped(afterWorkOvertimeMultiplier, 0...5), forKey: Key.afterWorkOvertimeMultiplier) }
+    }
+    @Published var appAppearance: AppAppearance {
+        didSet { defaults.set(appAppearance.rawValue, forKey: Key.appAppearance) }
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -76,16 +115,18 @@ final class SettingsStore: ObservableObject {
         self.monthlyPaidDays = defaults.object(forKey: Key.monthlyPaidDays) as? Double ?? 21.75
         let presetRaw = defaults.string(forKey: Key.schedulePreset) ?? SchedulePreset.standard965.rawValue
         self.schedulePreset = SchedulePreset(rawValue: presetRaw) ?? .standard965
-        self.workStartMinute = defaults.object(forKey: Key.workStartMinute) as? Int ?? 9 * 60
-        self.workEndMinute = defaults.object(forKey: Key.workEndMinute) as? Int ?? 18 * 60
+        self.workStartMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.workStartMinute) as? Int ?? 9 * 60)
+        self.workEndMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.workEndMinute) as? Int ?? 18 * 60)
         self.lunchBreakEnabled = defaults.object(forKey: Key.lunchBreakEnabled) as? Bool ?? true
-        self.lunchStartMinute = defaults.object(forKey: Key.lunchStartMinute) as? Int ?? 12 * 60
-        self.lunchEndMinute = defaults.object(forKey: Key.lunchEndMinute) as? Int ?? 13 * 60 + 30
+        self.lunchStartMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.lunchStartMinute) as? Int ?? 12 * 60)
+        self.lunchEndMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.lunchEndMinute) as? Int ?? 13 * 60 + 30)
         self.dinnerBreakEnabled = defaults.object(forKey: Key.dinnerBreakEnabled) as? Bool ?? true
-        self.dinnerStartMinute = defaults.object(forKey: Key.dinnerStartMinute) as? Int ?? 18 * 60 + 30
-        self.dinnerEndMinute = defaults.object(forKey: Key.dinnerEndMinute) as? Int ?? 19 * 60 + 30
+        self.dinnerStartMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.dinnerStartMinute) as? Int ?? 18 * 60 + 30)
+        self.dinnerEndMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.dinnerEndMinute) as? Int ?? 19 * 60 + 30)
         self.afterWorkOvertimeEnabled = defaults.object(forKey: Key.afterWorkOvertimeEnabled) as? Bool ?? true
         self.afterWorkOvertimeMultiplier = defaults.object(forKey: Key.afterWorkOvertimeMultiplier) as? Double ?? 1.5
+        let appearanceRaw = defaults.string(forKey: Key.appAppearance) ?? AppAppearance.day.rawValue
+        self.appAppearance = AppAppearance(rawValue: appearanceRaw) ?? .day
     }
 
     var monthlyIncome: Double {
@@ -116,6 +157,17 @@ final class SettingsStore: ObservableObject {
 
     var normalWorkHours: Double {
         normalWorkSeconds / 3600.0
+    }
+
+    var scheduleSummary: String {
+        var parts = ["\(Self.displayTime(workStartMinute))-\(Self.displayTime(workEndMinute))"]
+        if lunchBreakEnabled {
+            parts.append("午休 \(Self.displayTime(lunchStartMinute))-\(Self.displayTime(lunchEndMinute))")
+        }
+        if dinnerBreakEnabled {
+            parts.append("晚休 \(Self.displayTime(dinnerStartMinute))-\(Self.displayTime(dinnerEndMinute))")
+        }
+        return parts.joined(separator: " · ")
     }
 
     /// 有效时薪 = (月薪 + 年终奖/12) / (每月计薪天数 × 每天有效计薪小时)。
@@ -180,6 +232,15 @@ final class SettingsStore: ObservableObject {
                            isOvertimeActive: false)
     }
 
+    private func normalizeAndStoreMinute(_ keyPath: ReferenceWritableKeyPath<SettingsStore, Int>, key: String) {
+        let normalized = Self.normalizedMinuteOfDay(self[keyPath: keyPath])
+        guard self[keyPath: keyPath] == normalized else {
+            self[keyPath: keyPath] = normalized
+            return
+        }
+        defaults.set(normalized, forKey: key)
+    }
+
     static func date(on date: Date = Date(), minuteOfDay: Int, calendar: Calendar = .current) -> Date {
         let minute = clampedMinute(minuteOfDay)
         var components = calendar.dateComponents([.year, .month, .day], from: date)
@@ -194,9 +255,30 @@ final class SettingsStore: ObservableObject {
         return String(format: "%02d:%02d", minute / 60, minute % 60)
     }
 
+    static let allowedMinuteComponents = [0, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+
+    static func normalizedMinuteOfDay(_ value: Int) -> Int {
+        let minute = clampedMinute(value)
+        return (minute / 60) * 60 + nearestAllowedMinuteComponent(minute % 60)
+    }
+
+    static func nearestAllowedMinuteComponent(_ minute: Int) -> Int {
+        let safeMinute = min(max(minute, 0), 59)
+        return allowedMinuteComponents.min { first, second in
+            let firstDistance = abs(first - safeMinute)
+            let secondDistance = abs(second - safeMinute)
+            if firstDistance == secondDistance { return first < second }
+            return firstDistance < secondDistance
+        } ?? 0
+    }
+
+    static func minuteOfDay(hour: Int, minuteComponent: Int) -> Int {
+        min(max(hour, 0), 23) * 60 + nearestAllowedMinuteComponent(minuteComponent)
+    }
+
     static func minuteOfDay(from date: Date, calendar: Calendar = .current) -> Int {
         let components = calendar.dateComponents([.hour, .minute], from: date)
-        return (components.hour ?? 0) * 60 + (components.minute ?? 0)
+        return normalizedMinuteOfDay((components.hour ?? 0) * 60 + (components.minute ?? 0))
     }
 }
 

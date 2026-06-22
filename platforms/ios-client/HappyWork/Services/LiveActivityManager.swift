@@ -30,7 +30,8 @@ final class LiveActivityManager: ObservableObject {
         guard activity == nil else { return }  // 避免重复创建
         let attributes = WorkAttributes(hourlyRate: session.hourlyRate,
                                         startDate: session.startDate,
-                                        endDate: session.endDate)
+                                        endDate: session.endDate,
+                                        breakSegments: breakSegments(for: session))
         let content = ActivityContent(state: makeState(snapshot), staleDate: session.endDate)
         do {
             activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
@@ -59,7 +60,32 @@ final class LiveActivityManager: ObservableObject {
     }
 
     private func makeState(_ s: EarningsSnapshot) -> WorkAttributes.ContentState {
-        WorkAttributes.ContentState(earned: s.earned, asOf: Date(),
-                                    mood: s.mood.rawValue, emoji: s.mood.emoji)
+        WorkAttributes.ContentState(earned: s.earned,
+                                    targetEarned: s.targetEarned,
+                                    progress: s.progress,
+                                    asOf: Date(),
+                                    mood: s.mood.rawValue,
+                                    statusTitle: s.statusTitle,
+                                    isOvertime: s.isOvertime)
+    }
+
+    private func breakSegments(for session: WorkSession, calendar: Calendar = .current) -> [WorkAttributes.BreakSegment] {
+        let total = max(session.endDate.timeIntervalSince(session.startDate), 1)
+        return session.breaks.compactMap { item in
+            let start = date(on: session.startDate, minuteOfDay: item.startMinute, calendar: calendar)
+            let end = date(on: session.startDate, minuteOfDay: item.endMinute, calendar: calendar)
+            let startRatio = min(max(start.timeIntervalSince(session.startDate) / total, 0), 1)
+            let endRatio = min(max(end.timeIntervalSince(session.startDate) / total, 0), 1)
+            guard endRatio > startRatio else { return nil }
+            return WorkAttributes.BreakSegment(startRatio: startRatio, endRatio: endRatio)
+        }
+    }
+
+    private func date(on date: Date, minuteOfDay: Int, calendar: Calendar) -> Date {
+        var components = calendar.dateComponents([.year, .month, .day], from: date)
+        components.hour = minuteOfDay / 60
+        components.minute = minuteOfDay % 60
+        components.second = 0
+        return calendar.date(from: components) ?? date
     }
 }

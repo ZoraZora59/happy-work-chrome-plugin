@@ -11,15 +11,26 @@ import Foundation
 /// - 收入金额（`ContentState.earned`）是系统无法插值的任意数字，因此它是一个
 ///   **快照**：只在 App（或推送）调用 update 时刷新。详见 README「锁屏实时性的边界」。
 struct WorkAttributes: ActivityAttributes {
+    public struct BreakSegment: Codable, Hashable {
+        var startRatio: Double
+        var endRatio: Double
+    }
+
     public struct ContentState: Codable, Hashable {
         /// `asOf` 时刻已赚取金额（元）。下次 update 前保持不变。
         var earned: Double
+        /// 当天正常工时目标收入（元）。
+        var targetEarned: Double
+        /// 已完成的有效计薪进度（0...1）。
+        var progress: Double
         /// `earned` 的采样时刻。
         var asOf: Date
         /// `asOf` 时刻的心情阶段名称。
         var mood: String
-        /// `asOf` 时刻的心情 emoji。
-        var emoji: String
+        /// App 内同一套状态标题。
+        var statusTitle: String
+        /// 是否已进入加班计薪。
+        var isOvertime: Bool
     }
 
     /// 有效时薪（由月薪、年终奖、计薪天数、有效工时折算），元/小时。
@@ -28,6 +39,8 @@ struct WorkAttributes: ActivityAttributes {
     var startDate: Date
     /// 打工时段结束时间（= startDate + 工作时长），保证 > startDate。
     var endDate: Date
+    /// 休息段在日程轨道上的比例，用于锁屏展示午休/晚休断点。
+    var breakSegments: [BreakSegment]
 }
 
 extension WorkAttributes {

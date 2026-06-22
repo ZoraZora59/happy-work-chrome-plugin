@@ -46,6 +46,43 @@ final class HappyWorkTests: XCTestCase {
         XCTAssertEqual(store.effectiveHourlyRate, 110, accuracy: 0.001)
     }
 
+    func testScheduleMinutes_normalizesToLazyAllowedChoices() {
+        let store = ephemeralStore()
+
+        XCTAssertEqual(SettingsStore.allowedMinuteComponents, [0, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55])
+
+        store.workStartMinute = 9 * 60 + 7
+        store.workEndMinute = 18 * 60 + 58
+        store.lunchStartMinute = 12 * 60 + 4
+
+        XCTAssertEqual(store.workStartMinute, 9 * 60 + 10)
+        XCTAssertEqual(store.workEndMinute, 18 * 60 + 55)
+        XCTAssertEqual(store.lunchStartMinute, 12 * 60)
+    }
+
+    func testScheduleSummary_keepsHomeScreenConcise() {
+        let store = ephemeralStore()
+        store.workStartMinute = 9 * 60 + 30
+        store.workEndMinute = 18 * 60 + 30
+        store.lunchBreakEnabled = true
+        store.lunchStartMinute = 12 * 60
+        store.lunchEndMinute = 13 * 60 + 30
+        store.dinnerBreakEnabled = false
+
+        XCTAssertEqual(store.scheduleSummary, "09:30-18:30 · 午休 12:00-13:30")
+    }
+
+    func testAppAppearance_persistsDayNightMode() {
+        let suite = "test.happywork.appearance." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        let store = SettingsStore(defaults: defaults)
+
+        store.appAppearance = .night
+
+        let restored = SettingsStore(defaults: defaults)
+        XCTAssertEqual(restored.appAppearance, .night)
+    }
+
     func testWorkSessionSnapshot_excludesLunchBreak() {
         let session = WorkSession(startDate: day(9),
                                   endDate: day(18),
