@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  打工人加油站 · App 图标源文件（搞钱绿）
+  概念：加粗 ¥ + 右下三根上升柱 = 工资实时上涨。
+  主色取自 App 内部「今天已赚」的搞钱绿，去掉旧版橙色与细圆环。
+  规范：1024×1024、纯方形、不透明、不带圆角（iOS 自动切圆角）。
+  改完用 design/README.md 里的命令重新导出 AppIcon-1024.png。
+-->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#57E98A"/>
+      <stop offset="1" stop-color="#0FAE54"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" fill="url(#gA)"/>
+  <text x="512" y="354" text-anchor="middle" dominant-baseline="central"
+        font-family="'PingFang SC','SF Pro Display',Helvetica,Arial,sans-serif"
+        font-weight="800" font-size="500" fill="#ffffff">¥</text>
+  <rect x="283" y="732" width="118" height="118" rx="30" fill="#ffffff" fill-opacity="0.92"/>
+  <rect x="453" y="666" width="118" height="184" rx="30" fill="#ffffff" fill-opacity="0.92"/>
+  <rect x="623" y="588" width="118" height="262" rx="30" fill="#ffffff" fill-opacity="0.92"/>
+</svg>
