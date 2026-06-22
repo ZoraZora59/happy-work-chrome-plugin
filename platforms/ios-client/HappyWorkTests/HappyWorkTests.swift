@@ -20,44 +20,48 @@ final class HappyWorkTests: XCTestCase {
         return Calendar(identifier: .gregorian).date(from: components)!
     }
 
-    func testEffectiveHourlyRate_usesMonthlySalaryAndPaidHours() {
+    func testEffectiveHourlyRate_usesActualMonthlyWorkdays() {
         let store = ephemeralStore()
-        store.monthlySalary = 16000
+        store.monthlySalary = 17600
         store.annualBonus = 0
-        store.monthlyPaidDays = 20
+        store.workWeekPattern = .doubleRest
         store.workStartMinute = 9 * 60
         store.workEndMinute = 17 * 60
         store.lunchBreakEnabled = false
         store.dinnerBreakEnabled = false
 
-        XCTAssertEqual(store.effectiveHourlyRate, 100, accuracy: 0.001)
+        // 2026-06 双休 → 实际 22 个工作日；22 × 8h = 176h → 17600 / 176 = 100。
+        XCTAssertEqual(store.effectiveHourlyRate(on: date(2026, 6, 15), calendar: mondayCalendar),
+                       100, accuracy: 0.001)
     }
 
     func testEffectiveHourlyRate_amortizesAnnualBonusAcrossFullYear() {
         let store = ephemeralStore()
         store.monthlySalary = 16000
         store.annualBonus = 19200
-        store.monthlyPaidDays = 20
+        store.workWeekPattern = .doubleRest
         store.workStartMinute = 9 * 60
         store.workEndMinute = 17 * 60
         store.lunchBreakEnabled = false
         store.dinnerBreakEnabled = false
 
-        XCTAssertEqual(store.effectiveHourlyRate, 110, accuracy: 0.001)
+        // 月入 = 16000 + 19200/12 = 17600；2026-06 双休 22 天 × 8h → 17600 / 176 = 100。
+        XCTAssertEqual(store.effectiveHourlyRate(on: date(2026, 6, 15), calendar: mondayCalendar),
+                       100, accuracy: 0.001)
     }
 
-    func testScheduleMinutes_normalizesToLazyAllowedChoices() {
+    func testScheduleMinutes_snapToFiveMinuteGrid() {
         let store = ephemeralStore()
 
-        XCTAssertEqual(SettingsStore.allowedMinuteComponents, [0, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55])
+        XCTAssertEqual(SettingsStore.minuteStep, 5)
 
-        store.workStartMinute = 9 * 60 + 7
-        store.workEndMinute = 18 * 60 + 58
-        store.lunchStartMinute = 12 * 60 + 4
+        store.workStartMinute = 9 * 60 + 7    // → 9:05
+        store.workEndMinute = 18 * 60 + 58     // → 19:00（就近进位到下一个整点）
+        store.lunchStartMinute = 12 * 60 + 4   // → 12:05
 
-        XCTAssertEqual(store.workStartMinute, 9 * 60 + 10)
-        XCTAssertEqual(store.workEndMinute, 18 * 60 + 55)
-        XCTAssertEqual(store.lunchStartMinute, 12 * 60)
+        XCTAssertEqual(store.workStartMinute, 9 * 60 + 5)
+        XCTAssertEqual(store.workEndMinute, 19 * 60)
+        XCTAssertEqual(store.lunchStartMinute, 12 * 60 + 5)
     }
 
     func testScheduleSummary_keepsHomeScreenConcise() {
@@ -268,26 +272,29 @@ final class HappyWorkTests: XCTestCase {
         XCTAssertTrue(store.isRestDay(date(2026, 6, 28), calendar: cal))   // 周日休息
     }
 
-    func testWorkWeekPattern_autoSyncsMonthlyPaidDays() {
+    func testPaidDays_countsActualWorkdaysFromPattern() {
         let store = ephemeralStore()
-        store.workWeekPattern = .singleRest
-        XCTAssertEqual(store.monthlyPaidDays, 26, accuracy: 0.001)
+        let cal = mondayCalendar
+        let june = date(2026, 6, 15)  // 2026-06：30 天，1 号为周一，含 4 个周六 + 4 个周日
+
         store.workWeekPattern = .doubleRest
-        XCTAssertEqual(store.monthlyPaidDays, 21.75, accuracy: 0.001)
+        XCTAssertEqual(store.paidDays(in: june, calendar: cal), 22, accuracy: 0.001)  // 30 − 8
+
+        store.workWeekPattern = .singleRest
+        XCTAssertEqual(store.paidDays(in: june, calendar: cal), 26, accuracy: 0.001)  // 30 − 4 个周日
+
         store.workWeekPattern = .custom
-        store.customRestWeekdays = [1]  // 仅周日休 → 6 个工作日
-        XCTAssertEqual(store.monthlyPaidDays, 26.1, accuracy: 0.01)
+        store.customRestWeekdays = []  // 全勤无休
+        XCTAssertEqual(store.paidDays(in: june, calendar: cal), 30, accuracy: 0.001)
     }
 
-    func testApplyPreset_setsWorkWeekPatternAndPaidDays() {
+    func testApplyPreset_setsWorkWeekPattern() {
         let store = ephemeralStore()
         store.applyPreset(.long996)
         XCTAssertEqual(store.workWeekPattern, .singleRest)
-        XCTAssertEqual(store.monthlyPaidDays, 26, accuracy: 0.001)
 
         store.applyPreset(.standard965)
         XCTAssertEqual(store.workWeekPattern, .doubleRest)
-        XCTAssertEqual(store.monthlyPaidDays, 21.75, accuracy: 0.001)
     }
 
     func testWorkWeekPattern_persistsAcrossLaunch() {

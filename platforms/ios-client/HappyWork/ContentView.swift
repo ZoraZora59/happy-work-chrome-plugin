@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var settings: SettingsStore
@@ -470,13 +471,18 @@ private struct ScheduleSettingsSheet: View {
                             .foregroundStyle(theme.secondaryText)
                     }
 
-                    VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 12) {
                         Text("今日作息")
                             .font(.headline)
                             .foregroundStyle(theme.primaryText)
 
-                        TimeQuickEditor(title: "上班", minute: scheduleMinuteBinding(\.workStartMinute), theme: theme)
-                        TimeQuickEditor(title: "下班", minute: scheduleMinuteBinding(\.workEndMinute), theme: theme)
+                        VStack(spacing: 6) {
+                            TimeRow(title: "上班", minute: scheduleMinuteBinding(\.workStartMinute), theme: theme)
+                            Divider()
+                            TimeRow(title: "下班", minute: scheduleMinuteBinding(\.workEndMinute), theme: theme)
+                        }
+                        .padding(16)
+                        .background(theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
 
                     VStack(alignment: .leading, spacing: 14) {
@@ -597,14 +603,14 @@ private struct IncomeSettingsSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 18) {
-                Text("填月薪就够了，时薪会按作息自动折算。")
+                Text("填月薪就够了，时薪会按作息和工作制自动折算。")
                     .font(.subheadline)
                     .foregroundStyle(theme.secondaryText)
 
                 VStack(spacing: 14) {
                     MoneyField(title: "月薪（税前）", value: $settings.monthlySalary, theme: theme)
                     MoneyField(title: "年终奖（可选）", value: $settings.annualBonus, theme: theme)
-                    NumberField(title: "每月计薪天数", value: $settings.monthlyPaidDays, theme: theme)
+                    PaidDaysInfoRow(days: SettingsStore.trimmedDays(settings.paidDays()), theme: theme)
                 }
 
                 Divider()
@@ -632,104 +638,91 @@ private struct IncomeSettingsSheet: View {
     }
 }
 
-/// 统一的「全药丸」时间选择：时（横滑一行）/ 分（网格）两行，
-/// 每行左侧钉「时 / 分」标签消歧，药丸尺寸一致，选中只换底色不变大小。
-private struct TimeQuickEditor: View {
+/// 一行紧凑的时间选择：标题在左，原生时间药丸在右。点一下弹出系统滚轮，
+/// 不再让每个时间都铺开一整页的药丸——这正是之前「越滑越长」的根因。
+private struct TimeRow: View {
     var title: String
     @Binding var minute: Int
     var theme: DashboardTheme
 
-    private var hour: Int { minute / 60 }
-    private var minuteComponent: Int { minute % 60 }
-
-    private let minuteColumns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 6)
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(theme.primaryText)
-                Spacer()
-                Text(SettingsStore.displayTime(minute))
-                    .font(.title2.bold())
-                    .monospacedDigit()
-                    .foregroundStyle(theme.primaryText)
-            }
-
-            HStack(spacing: 10) {
-                rowLabel("时")
-                ScrollViewReader { proxy in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(0..<24, id: \.self) { h in
-                                TimePill(text: String(format: "%02d", h),
-                                         isSelected: h == hour,
-                                         fixedWidth: 36,
-                                         theme: theme) {
-                                    minute = SettingsStore.minuteOfDay(hour: h, minuteComponent: minuteComponent)
-                                }
-                                .id(h)
-                            }
-                        }
-                        .padding(.horizontal, 2)
-                        .padding(.vertical, 1)
-                    }
-                    .onAppear { proxy.scrollTo(hour, anchor: .center) }
-                    .onChange(of: hour) { newHour in
-                        withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(newHour, anchor: .center) }
-                    }
-                }
-            }
-
-            HStack(spacing: 10) {
-                rowLabel("分")
-                LazyVGrid(columns: minuteColumns, spacing: 6) {
-                    ForEach(SettingsStore.allowedMinuteComponents, id: \.self) { m in
-                        TimePill(text: String(format: "%02d", m),
-                                 isSelected: m == minuteComponent,
-                                 fixedWidth: nil,
-                                 theme: theme) {
-                            minute = SettingsStore.minuteOfDay(hour: hour, minuteComponent: m)
-                        }
-                    }
-                }
-            }
+        HStack {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(theme.primaryText)
+            Spacer()
+            CompactTimePicker(minute: $minute, tint: theme.accent)
         }
-        .padding(16)
-        .background(theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private func rowLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.caption)
-            .foregroundStyle(theme.secondaryText)
-            .frame(width: 16, alignment: .center)
     }
 }
 
-/// 单个时间药丸：小时给固定宽度（横滑），分钟用 `nil` 宽度填满网格列；高度恒定。
-private struct TimePill: View {
-    var text: String
-    var isSelected: Bool
-    var fixedWidth: CGFloat?
+/// 原生 `UIDatePicker`（compact 样式 + 5 分钟一档）：点一下弹出系统滚轮，
+/// 手指对齐轻松，占位只有一行，和 iOS 用户的肌肉记忆一致。
+private struct CompactTimePicker: UIViewRepresentable {
+    @Binding var minute: Int
+    var tint: Color
+
+    func makeUIView(context: Context) -> UIDatePicker {
+        let picker = UIDatePicker()
+        picker.datePickerMode = .time
+        picker.preferredDatePickerStyle = .compact
+        picker.minuteInterval = SettingsStore.minuteStep
+        picker.addTarget(context.coordinator,
+                         action: #selector(Coordinator.valueChanged(_:)),
+                         for: .valueChanged)
+        picker.setContentHuggingPriority(.required, for: .horizontal)
+        picker.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return picker
+    }
+
+    func updateUIView(_ picker: UIDatePicker, context: Context) {
+        context.coordinator.parent = self
+        picker.tintColor = UIColor(tint)
+        if SettingsStore.minuteOfDay(from: picker.date) != minute {
+            picker.date = SettingsStore.date(on: Date(), minuteOfDay: minute)
+        }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIDatePicker, context: Context) -> CGSize? {
+        uiView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject {
+        var parent: CompactTimePicker
+        init(_ parent: CompactTimePicker) { self.parent = parent }
+        @MainActor @objc func valueChanged(_ sender: UIDatePicker) {
+            parent.minute = SettingsStore.minuteOfDay(from: sender.date)
+        }
+    }
+}
+
+/// 收入规则里只读展示「每月计薪天数」——按每周工作制自动算出当月实际工作天数，
+/// 用户无需再手填一个莫名其妙的数字。
+private struct PaidDaysInfoRow: View {
+    var days: String
     var theme: DashboardTheme
-    var action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Text(text)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("每月计薪天数")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.primaryText)
+                Text("按每周工作制自动算")
+                    .font(.caption2)
+                    .foregroundStyle(theme.secondaryText)
+            }
+            Spacer()
+            Text("本月 \(days) 天")
+                .font(.headline)
                 .monospacedDigit()
-                .foregroundStyle(isSelected ? theme.primaryButtonText : theme.primaryText)
-                .frame(width: fixedWidth)
-                .frame(maxWidth: fixedWidth == nil ? .infinity : nil)
-                .padding(.vertical, 9)
-                .background(isSelected ? theme.accent : theme.secondarySurface,
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .foregroundStyle(theme.secondaryText)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -751,10 +744,12 @@ private struct BreakQuickEditor: View {
                         .foregroundStyle(theme.secondaryText)
                 }
             }
+            .tint(theme.accent)
 
             if isOn {
-                TimeQuickEditor(title: "开始", minute: $start, theme: theme)
-                TimeQuickEditor(title: "结束", minute: $end, theme: theme)
+                Divider()
+                TimeRow(title: "开始", minute: $start, theme: theme)
+                TimeRow(title: "结束", minute: $end, theme: theme)
             }
         }
         .padding(16)

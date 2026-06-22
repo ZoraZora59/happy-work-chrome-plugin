@@ -35,16 +35,6 @@ enum WorkWeekPattern: String, CaseIterable, Identifiable, Codable {
         case .custom: return "自定义"
         }
     }
-
-    /// 该工作制下「每月计薪天数」的推荐值（自定义另行按休息日数量推算）。
-    var defaultMonthlyPaidDays: Double {
-        switch self {
-        case .doubleRest: return 21.75
-        case .bigSmallWeek: return 23.8
-        case .singleRest: return 26
-        case .custom: return 21.75
-        }
-    }
 }
 
 enum AppAppearance: String, CaseIterable, Identifiable, Codable {
@@ -93,7 +83,6 @@ final class SettingsStore: ObservableObject {
     private enum Key {
         static let monthlySalary = "monthlySalary"
         static let annualBonus = "annualBonus"
-        static let monthlyPaidDays = "monthlyPaidDays"
         static let schedulePreset = "schedulePreset"
         static let workWeekPattern = "workWeekPattern"
         static let customRestWeekdays = "customRestWeekdays"
@@ -119,23 +108,15 @@ final class SettingsStore: ObservableObject {
 
     @Published var monthlySalary: Double { didSet { defaults.set(safeAmount(monthlySalary), forKey: Key.monthlySalary) } }
     @Published var annualBonus: Double { didSet { defaults.set(safeAmount(annualBonus), forKey: Key.annualBonus) } }
-    @Published var monthlyPaidDays: Double { didSet { defaults.set(clamped(monthlyPaidDays, 1...31), forKey: Key.monthlyPaidDays) } }
     @Published var schedulePreset: SchedulePreset {
         didSet { defaults.set(schedulePreset.rawValue, forKey: Key.schedulePreset) }
     }
     @Published var workWeekPattern: WorkWeekPattern {
-        didSet {
-            defaults.set(workWeekPattern.rawValue, forKey: Key.workWeekPattern)
-            // 切换工作制时，把「每月计薪天数」同步到推荐值（用户仍可在收入规则里手动改）。
-            monthlyPaidDays = recommendedMonthlyPaidDays
-        }
+        didSet { defaults.set(workWeekPattern.rawValue, forKey: Key.workWeekPattern) }
     }
     /// 自定义工作制下的休息日（1=周日 … 7=周六）。
     @Published var customRestWeekdays: Set<Int> {
-        didSet {
-            defaults.set(Array(customRestWeekdays).sorted(), forKey: Key.customRestWeekdays)
-            if workWeekPattern == .custom { monthlyPaidDays = recommendedMonthlyPaidDays }
-        }
+        didSet { defaults.set(Array(customRestWeekdays).sorted(), forKey: Key.customRestWeekdays) }
     }
     /// 大小周：锚点那一周（即「本周」基准周）是不是大周。
     @Published var bigSmallBigThisWeek: Bool {
@@ -169,7 +150,6 @@ final class SettingsStore: ObservableObject {
         self.monthlySalary = defaults.object(forKey: Key.monthlySalary) as? Double
             ?? (legacyHourlyRate.map { $0 * 21.75 * 8 } ?? 10000)
         self.annualBonus = defaults.object(forKey: Key.annualBonus) as? Double ?? 0
-        self.monthlyPaidDays = defaults.object(forKey: Key.monthlyPaidDays) as? Double ?? 21.75
         let presetRaw = defaults.string(forKey: Key.schedulePreset) ?? SchedulePreset.standard965.rawValue
         let resolvedPreset = SchedulePreset(rawValue: presetRaw) ?? .standard965
         self.schedulePreset = resolvedPreset
@@ -243,9 +223,14 @@ final class SettingsStore: ObservableObject {
         return parts.joined(separator: " · ")
     }
 
-    /// 有效时薪 = (月薪 + 年终奖/12) / (每月计薪天数 × 每天有效计薪小时)。
+    /// 有效时薪 = (月薪 + 年终奖/12) / (当月实际计薪天数 × 每天有效计薪小时)。
+    /// 计薪天数不再让用户手填——直接按「每周工作制」推算当月的实际工作天数。
     var effectiveHourlyRate: Double {
-        let monthlyHours = clamped(monthlyPaidDays, 1...31) * normalWorkHours
+        effectiveHourlyRate(on: Date())
+    }
+
+    func effectiveHourlyRate(on date: Date, calendar: Calendar = .current) -> Double {
+        let monthlyHours = paidDays(in: date, calendar: calendar) * normalWorkHours
         return monthlyHours > 0 ? monthlyIncome / monthlyHours : 0
     }
 
@@ -332,20 +317,25 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    /// 由工作制推算的「每月计薪天数」推荐值。
-    var recommendedMonthlyPaidDays: Double {
-        switch workWeekPattern {
-        case .custom:
-            let workdays = max(7 - customRestWeekdays.count, 0)
-            return ((Double(workdays) * 21.75 / 5.0) * 100).rounded() / 100
-        default:
-            return workWeekPattern.defaultMonthlyPaidDays
+    /// 当前「每周工作制」下，给定月份（默认本月）的实际计薪天数 = 当月非休息日的天数。
+    /// 直接数日历，自动覆盖双休 / 单休 / 大小周 / 自定义，月份不同结果可能不同——
+    /// 这正是用户想要的「当月实际工作天数」，不必再手填。
+    func paidDays(in date: Date = Date(), calendar: Calendar = .current) -> Double {
+        guard let dayRange = calendar.range(of: .day, in: .month, for: date),
+              let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else {
+            return 21.75
         }
+        var workdays = 0
+        for offset in 0..<dayRange.count {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: monthStart) else { continue }
+            if !isRestDay(day, calendar: calendar) { workdays += 1 }
+        }
+        return Double(max(workdays, 1))
     }
 
     /// 首页/作息页展示的一句话工作制说明。
     var workWeekSummary: String {
-        let paid = Self.trimmedDays(recommendedMonthlyPaidDays)
+        let paid = Self.trimmedDays(paidDays())
         let rest: String
         switch workWeekPattern {
         case .doubleRest:
@@ -358,7 +348,7 @@ final class SettingsStore: ObservableObject {
             let names = customRestWeekdays.sorted().map { Self.weekdayName($0) }
             rest = names.isEmpty ? "全勤无休" : names.joined(separator: "、") + "休息"
         }
-        return "\(rest) · 每月约 \(paid) 天计薪"
+        return "\(rest) · 本月 \(paid) 天计薪"
     }
 
     func applyPreset(_ preset: SchedulePreset) {
@@ -443,25 +433,13 @@ final class SettingsStore: ObservableObject {
         return String(format: "%.2f", rounded)
     }
 
-    static let allowedMinuteComponents = [0, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]
+    /// 时间一律对齐到 5 分钟刻度——和原生时间滚轮的 `minuteInterval` 保持一致，
+    /// 手指好对齐，作息也更整洁。
+    static let minuteStep = 5
 
     static func normalizedMinuteOfDay(_ value: Int) -> Int {
-        let minute = clampedMinute(value)
-        return (minute / 60) * 60 + nearestAllowedMinuteComponent(minute % 60)
-    }
-
-    static func nearestAllowedMinuteComponent(_ minute: Int) -> Int {
-        let safeMinute = min(max(minute, 0), 59)
-        return allowedMinuteComponents.min { first, second in
-            let firstDistance = abs(first - safeMinute)
-            let secondDistance = abs(second - safeMinute)
-            if firstDistance == secondDistance { return first < second }
-            return firstDistance < secondDistance
-        } ?? 0
-    }
-
-    static func minuteOfDay(hour: Int, minuteComponent: Int) -> Int {
-        min(max(hour, 0), 23) * 60 + nearestAllowedMinuteComponent(minuteComponent)
+        let snapped = Int((Double(clampedMinute(value)) / Double(minuteStep)).rounded()) * minuteStep
+        return clampedMinute(snapped)
     }
 
     static func minuteOfDay(from date: Date, calendar: Calendar = .current) -> Int {
