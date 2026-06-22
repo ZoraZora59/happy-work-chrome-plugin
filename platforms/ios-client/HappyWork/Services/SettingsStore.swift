@@ -77,6 +77,7 @@ final class SettingsStore: ObservableObject {
         static let afterWorkOvertimeMultiplier = "afterWorkOvertimeMultiplier"
         static let appAppearance = "appAppearance"
         static let activeSession = "session.active"
+        static let lastStoppedWork = "session.lastStopped"
 
         // 旧版兼容：从时薪迁移到月薪。
         static let legacyHourlyRate = "hourlyRate"
@@ -189,6 +190,31 @@ final class SettingsStore: ObservableObject {
                 defaults.removeObject(forKey: Key.activeSession)
             }
         }
+    }
+
+    /// 当天最近一次手动停止的会话，用于 App 重启后继续展示最终收入。
+    var lastStoppedWork: StoppedWorkRecord? {
+        get {
+            guard let data = defaults.data(forKey: Key.lastStoppedWork) else { return nil }
+            return try? JSONDecoder().decode(StoppedWorkRecord.self, from: data)
+        }
+        set {
+            if let newValue, let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: Key.lastStoppedWork)
+            } else {
+                defaults.removeObject(forKey: Key.lastStoppedWork)
+            }
+        }
+    }
+
+    /// 只恢复同一天的停止记录；跨天后自动清理，避免把昨天收入带到今天。
+    func stoppedWorkRecord(for date: Date = Date(), calendar: Calendar = .current) -> StoppedWorkRecord? {
+        guard let record = lastStoppedWork else { return nil }
+        guard calendar.isDate(record.stoppedAt, inSameDayAs: date) else {
+            lastStoppedWork = nil
+            return nil
+        }
+        return record
     }
 
     func applyPreset(_ preset: SchedulePreset) {

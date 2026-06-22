@@ -98,6 +98,16 @@ struct WorkSession: Codable, Equatable {
     }
 }
 
+/// 已结束的打工记录。保留原会话与停止时间，便于重启 App 后还原当天最终收入快照。
+struct StoppedWorkRecord: Codable, Equatable {
+    var session: WorkSession
+    var stoppedAt: Date
+
+    var snapshot: EarningsSnapshot {
+        session.snapshot(at: stoppedAt)
+    }
+}
+
 private func maxDate(_ first: Date, _ second: Date) -> Date {
     first >= second ? first : second
 }

@@ -17,6 +17,8 @@ struct HappyWorkApp: App {
                     liveActivity.restore()
                     if let session = settings.activeSession {
                         earnings.resume(session)
+                    } else if let record = settings.stoppedWorkRecord() {
+                        earnings.restoreStopped(record)
                     }
                 }
         }

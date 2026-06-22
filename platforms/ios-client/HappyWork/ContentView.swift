@@ -333,10 +333,12 @@ struct ContentView: View {
     }
 
     private var statusTitle: String {
-        earnings.session == nil ? "待开启" : earnings.snapshot.statusTitle
+        if earnings.hasStoppedSession { return "今日已停止" }
+        return earnings.session == nil ? "待开启" : earnings.snapshot.statusTitle
     }
 
     private var statusLine: String {
+        if earnings.hasStoppedSession { return "本次计薪已结束，收入已保留" }
         if earnings.session == nil { return "今天的班，还没开始计薪" }
         if earnings.snapshot.isOvertime { return "加班费正在按倍数累计" }
         if earnings.snapshot.isFinished { return "今天的正常工时已完成" }
@@ -346,7 +348,7 @@ struct ContentView: View {
     }
 
     private var currentProgress: Double {
-        earnings.session == nil ? 0 : earnings.snapshot.progress
+        earnings.session == nil && !earnings.hasStoppedSession ? 0 : earnings.snapshot.progress
     }
 
     private var salaryText: String {
@@ -355,6 +357,7 @@ struct ContentView: View {
     }
 
     private var countdownTitle: String {
+        if earnings.hasStoppedSession { return "有效计薪" }
         if earnings.session == nil && Date() >= settings.makeSession().endDate { return "已到下班时间" }
         if earnings.session == nil { return "距下班还有" }
         if earnings.snapshot.isOvertime { return "已加班" }
@@ -363,6 +366,7 @@ struct ContentView: View {
     }
 
     private var countdownValue: String {
+        if earnings.hasStoppedSession { return earnings.snapshot.elapsedString }
         let session = earnings.session ?? settings.makeSession()
         if earnings.session == nil && Date() >= session.endDate { return "今天" }
         if earnings.snapshot.isFinished { return "今天" }
@@ -374,6 +378,7 @@ struct ContentView: View {
     }
 
     private var lockCountdownText: String {
+        if earnings.hasStoppedSession { return "本次计薪已结束" }
         if earnings.session == nil && Date() >= settings.makeSession().endDate {
             return "今天已到下班点"
         }
@@ -388,22 +393,26 @@ struct ContentView: View {
     }
 
     private var displayedTargetEarned: Double {
-        guard earnings.session == nil else { return earnings.snapshot.targetEarned }
+        guard earnings.session == nil && !earnings.hasStoppedSession else { return earnings.snapshot.targetEarned }
         return settings.normalWorkSeconds / 3600.0 * settings.effectiveHourlyRate
     }
 
     private var primaryActionTitle: String {
+        if earnings.hasStoppedSession { return "重新开始打工" }
         guard earnings.session != nil else { return "开始打工" }
         return earnings.snapshot.isFinished ? "结束今日" : "结束打工"
     }
 
     private func toggleWork() {
-        if earnings.session != nil {
-            earnings.stop()
+        if let session = earnings.session {
+            let record = StoppedWorkRecord(session: session, stoppedAt: Date())
+            earnings.stop(at: record.stoppedAt)
             settings.activeSession = nil
+            settings.lastStoppedWork = record
             liveActivity.end()
         } else {
             let session = settings.makeSession()
+            settings.lastStoppedWork = nil
             settings.activeSession = session
             earnings.start(session)
             liveActivity.start(session: session, snapshot: session.snapshot())

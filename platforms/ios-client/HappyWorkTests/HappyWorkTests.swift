@@ -143,6 +143,65 @@ final class HappyWorkTests: XCTestCase {
         XCTAssertTrue(session.isComplete(at: day(20)))
     }
 
+    func testEarningsServiceStop_preservesFinalSnapshot() {
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [WorkBreak(name: "午休", startMinute: 12 * 60, endMinute: 13 * 60)],
+                                  isOvertimeActive: false)
+        let service = EarningsService()
+
+        service.start(session)
+        service.stop(at: day(11))
+
+        XCTAssertNil(service.session)
+        XCTAssertTrue(service.hasStoppedSession)
+        XCTAssertEqual(service.snapshot.elapsed, 2 * 3600, accuracy: 0.01)
+        XCTAssertEqual(service.snapshot.earned, 120, accuracy: 0.01)
+        XCTAssertEqual(service.snapshot.progress, 0.25, accuracy: 0.001)
+    }
+
+    func testStoppedWorkRecord_restoresFinalSnapshot() {
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [WorkBreak(name: "午休", startMinute: 12 * 60, endMinute: 13 * 60)],
+                                  isOvertimeActive: false)
+        let record = StoppedWorkRecord(session: session, stoppedAt: day(14))
+        let service = EarningsService()
+
+        service.restoreStopped(record)
+
+        XCTAssertNil(service.session)
+        XCTAssertTrue(service.hasStoppedSession)
+        XCTAssertEqual(service.snapshot.elapsed, 4 * 3600, accuracy: 0.01)
+        XCTAssertEqual(service.snapshot.earned, 240, accuracy: 0.01)
+        XCTAssertEqual(service.snapshot.progress, 0.5, accuracy: 0.001)
+    }
+
+    func testStoppedWorkRecord_persistsForSameDayAndExpiresNextDay() {
+        let suite = "test.happywork.stopped." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        let store = SettingsStore(defaults: defaults)
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [],
+                                  isOvertimeActive: false)
+        let record = StoppedWorkRecord(session: session, stoppedAt: day(11))
+        store.lastStoppedWork = record
+
+        let restored = SettingsStore(defaults: defaults)
+        XCTAssertEqual(restored.stoppedWorkRecord(for: day(20)), record)
+
+        let nextDay = Calendar(identifier: .gregorian).date(byAdding: .day, value: 1, to: day(11))!
+        XCTAssertNil(restored.stoppedWorkRecord(for: nextDay, calendar: Calendar(identifier: .gregorian)))
+        XCTAssertNil(restored.lastStoppedWork)
+    }
+
     func testMoodStageProgression() {
         XCTAssertEqual(MoodStage.forProgress(0.0), .calm)
         XCTAssertEqual(MoodStage.forProgress(0.5), .focus)
