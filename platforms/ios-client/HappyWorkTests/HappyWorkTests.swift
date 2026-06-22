@@ -208,4 +208,97 @@ final class HappyWorkTests: XCTestCase {
         XCTAssertEqual(MoodStage.forProgress(0.8), .flow)
         XCTAssertEqual(MoodStage.forProgress(1.0), .harvest)
     }
+
+    // MARK: - 每周工作制
+
+    /// 固定到具体日期（中午）：2026-06-15 周一 … 2026-06-28 周日。
+    private func date(_ year: Int, _ month: Int, _ day: Int) -> Date {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        components.hour = 12
+        return Calendar(identifier: .gregorian).date(from: components)!
+    }
+
+    /// 周一为一周之始，保证大小周的「本周」边界稳定。
+    private var mondayCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+        return calendar
+    }
+
+    func testWorkWeekPattern_doubleRestMarksWeekend() {
+        let store = ephemeralStore()
+        store.workWeekPattern = .doubleRest
+        let cal = mondayCalendar
+        XCTAssertTrue(store.isRestDay(date(2026, 6, 20), calendar: cal))   // 周六
+        XCTAssertTrue(store.isRestDay(date(2026, 6, 21), calendar: cal))   // 周日
+        XCTAssertFalse(store.isRestDay(date(2026, 6, 22), calendar: cal))  // 周一
+    }
+
+    func testWorkWeekPattern_singleRestMarksOnlySunday() {
+        let store = ephemeralStore()
+        store.workWeekPattern = .singleRest
+        let cal = mondayCalendar
+        XCTAssertFalse(store.isRestDay(date(2026, 6, 20), calendar: cal))  // 周六照常上班
+        XCTAssertTrue(store.isRestDay(date(2026, 6, 21), calendar: cal))   // 周日休息
+    }
+
+    func testWorkWeekPattern_customRestDays() {
+        let store = ephemeralStore()
+        store.workWeekPattern = .custom
+        store.customRestWeekdays = [4]  // 仅周三休息
+        let cal = mondayCalendar
+        XCTAssertTrue(store.isRestDay(date(2026, 6, 17), calendar: cal))   // 周三
+        XCTAssertFalse(store.isRestDay(date(2026, 6, 21), calendar: cal))  // 周日照常上班
+    }
+
+    func testWorkWeekPattern_bigSmallWeekAlternates() {
+        let store = ephemeralStore()
+        store.workWeekPattern = .bigSmallWeek
+        let cal = mondayCalendar
+        store.setBigSmallThisWeek(true, reference: date(2026, 6, 15), calendar: cal)  // 本周(15–21)为大周
+
+        // 大周：只休周日
+        XCTAssertFalse(store.isRestDay(date(2026, 6, 20), calendar: cal))  // 周六上班
+        XCTAssertTrue(store.isRestDay(date(2026, 6, 21), calendar: cal))   // 周日休息
+        // 下一周(22–28)为小周：双休
+        XCTAssertTrue(store.isRestDay(date(2026, 6, 27), calendar: cal))   // 周六休息
+        XCTAssertTrue(store.isRestDay(date(2026, 6, 28), calendar: cal))   // 周日休息
+    }
+
+    func testWorkWeekPattern_autoSyncsMonthlyPaidDays() {
+        let store = ephemeralStore()
+        store.workWeekPattern = .singleRest
+        XCTAssertEqual(store.monthlyPaidDays, 26, accuracy: 0.001)
+        store.workWeekPattern = .doubleRest
+        XCTAssertEqual(store.monthlyPaidDays, 21.75, accuracy: 0.001)
+        store.workWeekPattern = .custom
+        store.customRestWeekdays = [1]  // 仅周日休 → 6 个工作日
+        XCTAssertEqual(store.monthlyPaidDays, 26.1, accuracy: 0.01)
+    }
+
+    func testApplyPreset_setsWorkWeekPatternAndPaidDays() {
+        let store = ephemeralStore()
+        store.applyPreset(.long996)
+        XCTAssertEqual(store.workWeekPattern, .singleRest)
+        XCTAssertEqual(store.monthlyPaidDays, 26, accuracy: 0.001)
+
+        store.applyPreset(.standard965)
+        XCTAssertEqual(store.workWeekPattern, .doubleRest)
+        XCTAssertEqual(store.monthlyPaidDays, 21.75, accuracy: 0.001)
+    }
+
+    func testWorkWeekPattern_persistsAcrossLaunch() {
+        let suite = "test.happywork.workweek." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        let store = SettingsStore(defaults: defaults)
+        store.workWeekPattern = .custom
+        store.customRestWeekdays = [1, 4, 7]
+
+        let restored = SettingsStore(defaults: defaults)
+        XCTAssertEqual(restored.workWeekPattern, .custom)
+        XCTAssertEqual(restored.customRestWeekdays, [1, 4, 7])
+    }
 }

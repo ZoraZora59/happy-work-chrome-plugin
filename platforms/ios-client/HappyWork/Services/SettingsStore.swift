@@ -17,6 +17,36 @@ enum SchedulePreset: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// 每周工作制：决定一周里哪些天是休息日，并据此推算「每月计薪天数」。
+/// 与「今日作息」（几点上下班）正交——作息管一天的形状，工作制管一周的节奏。
+enum WorkWeekPattern: String, CaseIterable, Identifiable, Codable {
+    case doubleRest   // 双休（周六、周日休息，约 5 天/周）
+    case bigSmallWeek // 大小周（大周上六休一、小周双休，逐周轮换）
+    case singleRest   // 单休（仅周日休息，约 6 天/周）
+    case custom       // 自定义（手动勾选休息日）
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .doubleRest: return "双休"
+        case .bigSmallWeek: return "大小周"
+        case .singleRest: return "单休"
+        case .custom: return "自定义"
+        }
+    }
+
+    /// 该工作制下「每月计薪天数」的推荐值（自定义另行按休息日数量推算）。
+    var defaultMonthlyPaidDays: Double {
+        switch self {
+        case .doubleRest: return 21.75
+        case .bigSmallWeek: return 23.8
+        case .singleRest: return 26
+        case .custom: return 21.75
+        }
+    }
+}
+
 enum AppAppearance: String, CaseIterable, Identifiable, Codable {
     case day
     case night
@@ -65,6 +95,10 @@ final class SettingsStore: ObservableObject {
         static let annualBonus = "annualBonus"
         static let monthlyPaidDays = "monthlyPaidDays"
         static let schedulePreset = "schedulePreset"
+        static let workWeekPattern = "workWeekPattern"
+        static let customRestWeekdays = "customRestWeekdays"
+        static let bigSmallBigThisWeek = "bigSmallBigThisWeek"
+        static let bigSmallAnchorDate = "bigSmallAnchorDate"
         static let workStartMinute = "workStartMinute"
         static let workEndMinute = "workEndMinute"
         static let lunchBreakEnabled = "lunchBreakEnabled"
@@ -88,6 +122,28 @@ final class SettingsStore: ObservableObject {
     @Published var monthlyPaidDays: Double { didSet { defaults.set(clamped(monthlyPaidDays, 1...31), forKey: Key.monthlyPaidDays) } }
     @Published var schedulePreset: SchedulePreset {
         didSet { defaults.set(schedulePreset.rawValue, forKey: Key.schedulePreset) }
+    }
+    @Published var workWeekPattern: WorkWeekPattern {
+        didSet {
+            defaults.set(workWeekPattern.rawValue, forKey: Key.workWeekPattern)
+            // 切换工作制时，把「每月计薪天数」同步到推荐值（用户仍可在收入规则里手动改）。
+            monthlyPaidDays = recommendedMonthlyPaidDays
+        }
+    }
+    /// 自定义工作制下的休息日（1=周日 … 7=周六）。
+    @Published var customRestWeekdays: Set<Int> {
+        didSet {
+            defaults.set(Array(customRestWeekdays).sorted(), forKey: Key.customRestWeekdays)
+            if workWeekPattern == .custom { monthlyPaidDays = recommendedMonthlyPaidDays }
+        }
+    }
+    /// 大小周：锚点那一周（即「本周」基准周）是不是大周。
+    @Published var bigSmallBigThisWeek: Bool {
+        didSet { defaults.set(bigSmallBigThisWeek, forKey: Key.bigSmallBigThisWeek) }
+    }
+    /// 大小周轮换的参照日（锚点周内任一时刻），用来判断目标周与锚点周的奇偶。
+    @Published var bigSmallAnchorDate: Date {
+        didSet { defaults.set(bigSmallAnchorDate.timeIntervalSince1970, forKey: Key.bigSmallAnchorDate) }
     }
     @Published var workStartMinute: Int { didSet { normalizeAndStoreMinute(\.workStartMinute, key: Key.workStartMinute) } }
     @Published var workEndMinute: Int { didSet { normalizeAndStoreMinute(\.workEndMinute, key: Key.workEndMinute) } }
@@ -115,7 +171,23 @@ final class SettingsStore: ObservableObject {
         self.annualBonus = defaults.object(forKey: Key.annualBonus) as? Double ?? 0
         self.monthlyPaidDays = defaults.object(forKey: Key.monthlyPaidDays) as? Double ?? 21.75
         let presetRaw = defaults.string(forKey: Key.schedulePreset) ?? SchedulePreset.standard965.rawValue
-        self.schedulePreset = SchedulePreset(rawValue: presetRaw) ?? .standard965
+        let resolvedPreset = SchedulePreset(rawValue: presetRaw) ?? .standard965
+        self.schedulePreset = resolvedPreset
+        // 老用户没有工作制字段时，从既有的 965/996 套餐推断一个合理默认。
+        if let storedPattern = defaults.string(forKey: Key.workWeekPattern),
+           let pattern = WorkWeekPattern(rawValue: storedPattern) {
+            self.workWeekPattern = pattern
+        } else {
+            self.workWeekPattern = resolvedPreset == .long996 ? .singleRest : .doubleRest
+        }
+        let storedRestDays = defaults.array(forKey: Key.customRestWeekdays) as? [Int] ?? [1, 7]
+        self.customRestWeekdays = Set(storedRestDays.filter { (1...7).contains($0) })
+        self.bigSmallBigThisWeek = defaults.object(forKey: Key.bigSmallBigThisWeek) as? Bool ?? true
+        if let anchorInterval = defaults.object(forKey: Key.bigSmallAnchorDate) as? Double {
+            self.bigSmallAnchorDate = Date(timeIntervalSince1970: anchorInterval)
+        } else {
+            self.bigSmallAnchorDate = Date()
+        }
         self.workStartMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.workStartMinute) as? Int ?? 9 * 60)
         self.workEndMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.workEndMinute) as? Int ?? 18 * 60)
         self.lunchBreakEnabled = defaults.object(forKey: Key.lunchBreakEnabled) as? Bool ?? true
@@ -217,13 +289,85 @@ final class SettingsStore: ObservableObject {
         return record
     }
 
+    /// 给定日期是不是休息日（默认今天）。
+    func isRestDay(_ date: Date = Date(), calendar: Calendar = .current) -> Bool {
+        let weekday = calendar.component(.weekday, from: date)  // 1=周日 … 7=周六
+        switch workWeekPattern {
+        case .doubleRest:
+            return weekday == 1 || weekday == 7
+        case .singleRest:
+            return weekday == 1
+        case .bigSmallWeek:
+            return isBigWeek(for: date, calendar: calendar) ? (weekday == 1)
+                                                            : (weekday == 1 || weekday == 7)
+        case .custom:
+            return customRestWeekdays.contains(weekday)
+        }
+    }
+
+    /// 目标日期所在周相对锚点周是不是大周（大周上六休一）。
+    func isBigWeek(for date: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard let anchorStart = calendar.dateInterval(of: .weekOfYear, for: bigSmallAnchorDate)?.start,
+              let targetStart = calendar.dateInterval(of: .weekOfYear, for: date)?.start else {
+            return bigSmallBigThisWeek
+        }
+        let days = calendar.dateComponents([.day], from: anchorStart, to: targetStart).day ?? 0
+        let weeks = Int((Double(days) / 7.0).rounded())
+        let isEven = ((weeks % 2) + 2) % 2 == 0
+        return isEven ? bigSmallBigThisWeek : !bigSmallBigThisWeek
+    }
+
+    /// 把「本周」标记为大周或小周，并据此重置轮换锚点。
+    func setBigSmallThisWeek(_ big: Bool, reference: Date = Date(), calendar: Calendar = .current) {
+        bigSmallAnchorDate = calendar.dateInterval(of: .weekOfYear, for: reference)?.start ?? reference
+        bigSmallBigThisWeek = big
+    }
+
+    func toggleCustomRestWeekday(_ weekday: Int) {
+        guard (1...7).contains(weekday) else { return }
+        if customRestWeekdays.contains(weekday) {
+            customRestWeekdays.remove(weekday)
+        } else {
+            customRestWeekdays.insert(weekday)
+        }
+    }
+
+    /// 由工作制推算的「每月计薪天数」推荐值。
+    var recommendedMonthlyPaidDays: Double {
+        switch workWeekPattern {
+        case .custom:
+            let workdays = max(7 - customRestWeekdays.count, 0)
+            return ((Double(workdays) * 21.75 / 5.0) * 100).rounded() / 100
+        default:
+            return workWeekPattern.defaultMonthlyPaidDays
+        }
+    }
+
+    /// 首页/作息页展示的一句话工作制说明。
+    var workWeekSummary: String {
+        let paid = Self.trimmedDays(recommendedMonthlyPaidDays)
+        let rest: String
+        switch workWeekPattern {
+        case .doubleRest:
+            rest = "周六、周日休息"
+        case .singleRest:
+            rest = "周日休息"
+        case .bigSmallWeek:
+            rest = isBigWeek() ? "本周大周（上六休一）" : "本周小周（双休）"
+        case .custom:
+            let names = customRestWeekdays.sorted().map { Self.weekdayName($0) }
+            rest = names.isEmpty ? "全勤无休" : names.joined(separator: "、") + "休息"
+        }
+        return "\(rest) · 每月约 \(paid) 天计薪"
+    }
+
     func applyPreset(_ preset: SchedulePreset) {
         schedulePreset = preset
         switch preset {
         case .standard965:
+            workWeekPattern = .doubleRest
             workStartMinute = 9 * 60
             workEndMinute = 18 * 60
-            monthlyPaidDays = 21.75
             lunchBreakEnabled = true
             lunchStartMinute = 12 * 60
             lunchEndMinute = 13 * 60 + 30
@@ -231,9 +375,9 @@ final class SettingsStore: ObservableObject {
             dinnerStartMinute = 18 * 60 + 30
             dinnerEndMinute = 19 * 60 + 30
         case .long996:
+            workWeekPattern = .singleRest
             workStartMinute = 9 * 60
             workEndMinute = 21 * 60
-            monthlyPaidDays = 26
             lunchBreakEnabled = true
             lunchStartMinute = 12 * 60
             lunchEndMinute = 13 * 60 + 30
@@ -279,6 +423,24 @@ final class SettingsStore: ObservableObject {
     static func displayTime(_ minuteOfDay: Int) -> String {
         let minute = clampedMinute(minuteOfDay)
         return String(format: "%02d:%02d", minute / 60, minute % 60)
+    }
+
+    static func weekdayName(_ weekday: Int) -> String {
+        let names = ["", "周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+        return (1...7).contains(weekday) ? names[weekday] : ""
+    }
+
+    static func weekdayShort(_ weekday: Int) -> String {
+        let names = ["", "日", "一", "二", "三", "四", "五", "六"]
+        return (1...7).contains(weekday) ? names[weekday] : ""
+    }
+
+    /// 把计薪天数格式化成最简：26 → "26"，23.8 → "23.8"，21.75 → "21.75"。
+    static func trimmedDays(_ value: Double) -> String {
+        let rounded = (value * 100).rounded() / 100
+        if rounded == rounded.rounded() { return String(Int(rounded)) }
+        if (rounded * 10).rounded() == rounded * 10 { return String(format: "%.1f", rounded) }
+        return String(format: "%.2f", rounded)
     }
 
     static let allowedMinuteComponents = [0, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]

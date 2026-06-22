@@ -49,9 +49,6 @@ struct ContentView: View {
                 liveActivity.update(snapshot: earnings.snapshot, session: session, force: true)
             }
         }
-        .onChange(of: settings.schedulePreset) { preset in
-            settings.applyPreset(preset)
-        }
     }
 
     private var header: some View {
@@ -332,13 +329,20 @@ struct ContentView: View {
         .accessibilityLabel("动态岛预览，已赚 \(String(format: "%.0f", earnings.snapshot.earned)) 元，剩余 \(countdownValue)")
     }
 
+    /// 今天是休息日、且尚未主动开工——纯展示层的「休息」态。仍可点开工自愿计薪。
+    private var isRestDayToday: Bool {
+        earnings.session == nil && !earnings.hasStoppedSession && settings.isRestDay()
+    }
+
     private var statusTitle: String {
         if earnings.hasStoppedSession { return "今日已停止" }
+        if isRestDayToday { return "今天休息" }
         return earnings.session == nil ? "待开启" : earnings.snapshot.statusTitle
     }
 
     private var statusLine: String {
         if earnings.hasStoppedSession { return "本次计薪已结束，收入已保留" }
+        if isRestDayToday { return "今天休息 · 不计薪，安心躺平" }
         if earnings.session == nil { return "今天的班，还没开始计薪" }
         if earnings.snapshot.isOvertime { return "加班费正在按倍数累计" }
         if earnings.snapshot.isFinished { return "今天的正常工时已完成" }
@@ -358,6 +362,7 @@ struct ContentView: View {
 
     private var countdownTitle: String {
         if earnings.hasStoppedSession { return "有效计薪" }
+        if isRestDayToday { return "今日" }
         if earnings.session == nil && Date() >= settings.makeSession().endDate { return "已到下班时间" }
         if earnings.session == nil { return "距下班还有" }
         if earnings.snapshot.isOvertime { return "已加班" }
@@ -367,6 +372,7 @@ struct ContentView: View {
 
     private var countdownValue: String {
         if earnings.hasStoppedSession { return earnings.snapshot.elapsedString }
+        if isRestDayToday { return "休息" }
         let session = earnings.session ?? settings.makeSession()
         if earnings.session == nil && Date() >= session.endDate { return "今天" }
         if earnings.snapshot.isFinished { return "今天" }
@@ -379,6 +385,7 @@ struct ContentView: View {
 
     private var lockCountdownText: String {
         if earnings.hasStoppedSession { return "本次计薪已结束" }
+        if isRestDayToday { return "今天休息" }
         if earnings.session == nil && Date() >= settings.makeSession().endDate {
             return "今天已到下班点"
         }
@@ -399,6 +406,7 @@ struct ContentView: View {
 
     private var primaryActionTitle: String {
         if earnings.hasStoppedSession { return "重新开始打工" }
+        if isRestDayToday { return "今天也要开工" }
         guard earnings.session != nil else { return "开始打工" }
         return earnings.snapshot.isFinished ? "结束今日" : "结束打工"
     }
@@ -437,15 +445,36 @@ private struct ScheduleSettingsSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Picker("作息模板", selection: $settings.schedulePreset) {
-                        ForEach(SchedulePreset.allCases) { preset in
-                            Text(preset.title).tag(preset)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("每周工作制")
+                            .font(.headline)
+                            .foregroundStyle(theme.primaryText)
 
-                    VStack(spacing: 18) {
+                        Picker("每周工作制", selection: $settings.workWeekPattern) {
+                            ForEach(WorkWeekPattern.allCases) { pattern in
+                                Text(pattern.title).tag(pattern)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        if settings.workWeekPattern == .bigSmallWeek {
+                            bigSmallWeekControl
+                        }
+                        if settings.workWeekPattern == .custom {
+                            customRestWeekdayControl
+                        }
+
+                        Text(settings.workWeekSummary)
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
+                    }
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("今日作息")
+                            .font(.headline)
+                            .foregroundStyle(theme.primaryText)
+
                         TimeQuickEditor(title: "上班", minute: scheduleMinuteBinding(\.workStartMinute), theme: theme)
                         TimeQuickEditor(title: "下班", minute: scheduleMinuteBinding(\.workEndMinute), theme: theme)
                     }
@@ -492,6 +521,59 @@ private struct ScheduleSettingsSheet: View {
                 }
             }
             .preferredColorScheme(theme.appearance == .night ? .dark : .light)
+        }
+    }
+
+    private var bigSmallWeekControl: some View {
+        HStack(spacing: 8) {
+            Text("本周")
+                .font(.subheadline)
+                .foregroundStyle(theme.secondaryText)
+            bigSmallChip(title: "大周·上6休1", isSelected: settings.isBigWeek()) {
+                settings.setBigSmallThisWeek(true)
+            }
+            bigSmallChip(title: "小周·双休", isSelected: !settings.isBigWeek()) {
+                settings.setBigSmallThisWeek(false)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func bigSmallChip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.bold())
+                .foregroundStyle(isSelected ? theme.primaryButtonText : theme.primaryText)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(isSelected ? theme.accent : theme.secondarySurface, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var customRestWeekdayControl: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                ForEach(1...7, id: \.self) { weekday in
+                    let isRest = settings.customRestWeekdays.contains(weekday)
+                    Button {
+                        settings.toggleCustomRestWeekday(weekday)
+                    } label: {
+                        Text(SettingsStore.weekdayShort(weekday))
+                            .font(.subheadline)
+                            .fontWeight(isRest ? .semibold : .regular)
+                            .foregroundStyle(isRest ? theme.primaryButtonText : theme.primaryText)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 9)
+                            .background(isRest ? theme.accent : theme.secondarySurface,
+                                        in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            Text("绿色 = 休息日，点一下切换")
+                .font(.caption2)
+                .foregroundStyle(theme.secondaryText)
         }
     }
 
@@ -550,44 +632,104 @@ private struct IncomeSettingsSheet: View {
     }
 }
 
+/// 统一的「全药丸」时间选择：时（横滑一行）/ 分（网格）两行，
+/// 每行左侧钉「时 / 分」标签消歧，药丸尺寸一致，选中只换底色不变大小。
 private struct TimeQuickEditor: View {
     var title: String
     @Binding var minute: Int
     var theme: DashboardTheme
 
-    private var hourBinding: Binding<Int> {
-        Binding(
-            get: { minute / 60 },
-            set: { minute = SettingsStore.minuteOfDay(hour: $0, minuteComponent: minute % 60) }
-        )
-    }
+    private var hour: Int { minute / 60 }
+    private var minuteComponent: Int { minute % 60 }
+
+    private let minuteColumns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 6)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(theme.primaryText)
                 Spacer()
-                Picker("小时", selection: hourBinding) {
-                    ForEach(0..<24) { hour in
-                        Text(String(format: "%02d 点", hour)).tag(hour)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .tint(theme.primaryText)
-
                 Text(SettingsStore.displayTime(minute))
-                    .font(.title3.bold())
+                    .font(.title2.bold())
                     .monospacedDigit()
                     .foregroundStyle(theme.primaryText)
             }
 
-            MinuteChipRow(selectedMinute: $minute, theme: theme)
+            HStack(spacing: 10) {
+                rowLabel("时")
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(0..<24, id: \.self) { h in
+                                TimePill(text: String(format: "%02d", h),
+                                         isSelected: h == hour,
+                                         fixedWidth: 36,
+                                         theme: theme) {
+                                    minute = SettingsStore.minuteOfDay(hour: h, minuteComponent: minuteComponent)
+                                }
+                                .id(h)
+                            }
+                        }
+                        .padding(.horizontal, 2)
+                        .padding(.vertical, 1)
+                    }
+                    .onAppear { proxy.scrollTo(hour, anchor: .center) }
+                    .onChange(of: hour) { newHour in
+                        withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(newHour, anchor: .center) }
+                    }
+                }
+            }
+
+            HStack(spacing: 10) {
+                rowLabel("分")
+                LazyVGrid(columns: minuteColumns, spacing: 6) {
+                    ForEach(SettingsStore.allowedMinuteComponents, id: \.self) { m in
+                        TimePill(text: String(format: "%02d", m),
+                                 isSelected: m == minuteComponent,
+                                 fixedWidth: nil,
+                                 theme: theme) {
+                            minute = SettingsStore.minuteOfDay(hour: hour, minuteComponent: m)
+                        }
+                    }
+                }
+            }
         }
         .padding(16)
         .background(theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func rowLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(theme.secondaryText)
+            .frame(width: 16, alignment: .center)
+    }
+}
+
+/// 单个时间药丸：小时给固定宽度（横滑），分钟用 `nil` 宽度填满网格列；高度恒定。
+private struct TimePill: View {
+    var text: String
+    var isSelected: Bool
+    var fixedWidth: CGFloat?
+    var theme: DashboardTheme
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(text)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .monospacedDigit()
+                .foregroundStyle(isSelected ? theme.primaryButtonText : theme.primaryText)
+                .frame(width: fixedWidth)
+                .frame(maxWidth: fixedWidth == nil ? .infinity : nil)
+                .padding(.vertical, 9)
+                .background(isSelected ? theme.accent : theme.secondarySurface,
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -617,33 +759,6 @@ private struct BreakQuickEditor: View {
         }
         .padding(16)
         .background(theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
-
-private struct MinuteChipRow: View {
-    @Binding var selectedMinute: Int
-    var theme: DashboardTheme
-
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 6)
-
-    var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            ForEach(SettingsStore.allowedMinuteComponents, id: \.self) { item in
-                let isSelected = selectedMinute % 60 == item
-                Button {
-                    selectedMinute = SettingsStore.minuteOfDay(hour: selectedMinute / 60, minuteComponent: item)
-                } label: {
-                    Text(String(format: "%02d", item))
-                        .font(.caption.bold())
-                        .monospacedDigit()
-                        .foregroundStyle(isSelected ? theme.primaryButtonText : theme.primaryText)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(isSelected ? theme.accent : theme.secondarySurface, in: Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-        }
     }
 }
 
