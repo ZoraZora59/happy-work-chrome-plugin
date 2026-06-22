@@ -12,6 +12,7 @@ final class LiveActivityManager: ObservableObject {
 
     private var activity: Activity<WorkAttributes>?
     private var lastPush: Date = .distantPast
+    private let snapshotFreshness: TimeInterval = 60
 
     /// 用户是否在系统设置里为本 App 打开了「实时活动」。
     var areActivitiesEnabled: Bool {
@@ -32,7 +33,7 @@ final class LiveActivityManager: ObservableObject {
                                         startDate: session.startDate,
                                         endDate: session.endDate,
                                         breakSegments: breakSegments(for: session))
-        let content = ActivityContent(state: makeState(snapshot), staleDate: session.endDate)
+        let content = makeContent(snapshot: snapshot, session: session)
         do {
             activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
             isActive = true
@@ -47,7 +48,7 @@ final class LiveActivityManager: ObservableObject {
         let now = Date()
         guard force || now.timeIntervalSince(lastPush) >= 8 else { return }
         lastPush = now
-        let content = ActivityContent(state: makeState(snapshot), staleDate: session.endDate)
+        let content = makeContent(snapshot: snapshot, session: session)
         Task { await activity.update(content) }
     }
 
@@ -67,6 +68,11 @@ final class LiveActivityManager: ObservableObject {
                                     mood: s.mood.rawValue,
                                     statusTitle: s.statusTitle,
                                     isOvertime: s.isOvertime)
+    }
+
+    private func makeContent(snapshot: EarningsSnapshot, session: WorkSession) -> ActivityContent<WorkAttributes.ContentState> {
+        let staleDate = min(Date().addingTimeInterval(snapshotFreshness), session.endDate)
+        return ActivityContent(state: makeState(snapshot), staleDate: staleDate)
     }
 
     private func breakSegments(for session: WorkSession, calendar: Calendar = .current) -> [WorkAttributes.BreakSegment] {

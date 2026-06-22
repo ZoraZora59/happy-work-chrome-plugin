@@ -91,3 +91,16 @@ struct EarningsSnapshot: Equatable {
                      : String(format: "%02d:%02d", m, s)
     }
 }
+
+enum WorkDurationFormatter {
+    static func readableCountdown(_ interval: TimeInterval) -> String {
+        let totalMinutes = max(Int(interval / 60), 0)
+        guard totalMinutes > 0 else { return "不足1分钟" }
+
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours == 0 { return "\(minutes)分钟" }
+        if minutes == 0 { return "\(hours)小时" }
+        return "\(hours)小时\(minutes)分"
+    }
+}

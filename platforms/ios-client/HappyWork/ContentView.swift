@@ -45,7 +45,7 @@ struct ContentView: View {
             }
         }
         .onChange(of: scenePhase) { phase in
-            if phase == .background, let session = earnings.session {
+            if (phase == .active || phase == .background), let session = earnings.session {
                 liveActivity.update(snapshot: earnings.snapshot, session: session, force: true)
             }
         }
@@ -355,20 +355,22 @@ struct ContentView: View {
     }
 
     private var countdownTitle: String {
-        if earnings.session == nil && Date() >= settings.makeSession().endDate { return "已到点" }
-        if earnings.session == nil { return "下班" }
-        if earnings.snapshot.isOvertime { return "加班" }
-        if earnings.snapshot.isFinished { return "已到点" }
-        return "下班"
+        if earnings.session == nil && Date() >= settings.makeSession().endDate { return "已到下班时间" }
+        if earnings.session == nil { return "距下班还有" }
+        if earnings.snapshot.isOvertime { return "已加班" }
+        if earnings.snapshot.isFinished { return "已到下班时间" }
+        return "距下班还有"
     }
 
     private var countdownValue: String {
         let session = earnings.session ?? settings.makeSession()
         if earnings.session == nil && Date() >= session.endDate { return "今天" }
         if earnings.snapshot.isFinished { return "今天" }
-        if earnings.snapshot.isOvertime { return earnings.snapshot.overtimeString }
+        if earnings.snapshot.isOvertime {
+            return WorkDurationFormatter.readableCountdown(earnings.snapshot.overtimeElapsed)
+        }
         let remaining = max(session.endDate.timeIntervalSince(Date()), 0)
-        return remaining.hourMinuteText
+        return WorkDurationFormatter.readableCountdown(remaining)
     }
 
     private var lockCountdownText: String {
@@ -662,13 +664,14 @@ private struct CountdownBlock: View {
                 .font(.caption.bold())
                 .foregroundStyle(theme.secondaryText)
             Text(value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(.system(size: 21, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
                 .foregroundStyle(theme.primaryText)
         }
-        .padding(14)
+        .frame(minWidth: 124, alignment: .trailing)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 14)
         .background(theme.secondarySurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
@@ -844,15 +847,6 @@ private enum LockPreviewPalette {
     static let overtime = Color(red: 1.0, green: 0.58, blue: 0.24)
 }
 
-private extension TimeInterval {
-    var hourMinuteText: String {
-        let totalMinutes = max(Int(self / 60), 0)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        return "\(hours):" + String(format: "%02d", minutes)
-    }
-}
-
 private extension Double {
     var hoursAsHourMinuteText: String {
         let totalMinutes = max(Int((self * 60).rounded()), 0)
@@ -862,9 +856,11 @@ private extension Double {
     }
 }
 
+#if DEBUG
 #Preview {
     ContentView()
         .environmentObject(SettingsStore())
         .environmentObject(EarningsService())
         .environmentObject(LiveActivityManager())
 }
+#endif

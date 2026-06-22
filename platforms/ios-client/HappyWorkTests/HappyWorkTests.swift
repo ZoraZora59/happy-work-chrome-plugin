@@ -83,6 +83,13 @@ final class HappyWorkTests: XCTestCase {
         XCTAssertEqual(restored.appAppearance, .night)
     }
 
+    func testReadableCountdown_usesExplicitChineseUnits() {
+        XCTAssertEqual(WorkDurationFormatter.readableCountdown(10 * 3600 + 19 * 60), "10小时19分")
+        XCTAssertEqual(WorkDurationFormatter.readableCountdown(19 * 60), "19分钟")
+        XCTAssertEqual(WorkDurationFormatter.readableCountdown(2 * 3600), "2小时")
+        XCTAssertEqual(WorkDurationFormatter.readableCountdown(59), "不足1分钟")
+    }
+
     func testWorkSessionSnapshot_excludesLunchBreak() {
         let session = WorkSession(startDate: day(9),
                                   endDate: day(18),

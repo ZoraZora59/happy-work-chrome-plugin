@@ -16,7 +16,7 @@ struct HappyWorkLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("已赚")
+                        Text("截至 \(context.state.asOf, format: .dateTime.hour().minute())")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Text("¥" + money(context.state.earned))
@@ -38,7 +38,7 @@ struct HappyWorkLiveActivity: Widget {
 
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
-                        WidgetProgressStrip(progress: context.state.progress,
+                        WidgetProgressStrip(timerRange: context.attributes.timerRange,
                                             breakSegments: context.attributes.breakSegments)
                         HStack {
                             Text(context.state.statusTitle)
@@ -51,9 +51,8 @@ struct HappyWorkLiveActivity: Widget {
                     }
                 }
             } compactLeading: {
-                Text("¥" + money(context.state.earned))
+                Text(context.state.isOvertime ? "加班" : "计薪")
                     .font(.caption.bold())
-                    .monospacedDigit()
             } compactTrailing: {
                 Text(timerInterval: context.attributes.timerRange, countsDown: true)
                     .font(.caption2.bold())
@@ -95,6 +94,9 @@ private struct LockScreenView: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 3) {
+                    Text("收入快照")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                     Text("¥" + String(format: "%.0f", context.state.earned))
                         .font(.title2.bold())
                         .monospacedDigit()
@@ -118,14 +120,14 @@ private struct LockScreenView: View {
                     .foregroundStyle(.secondary)
             }
 
-            WidgetProgressStrip(progress: context.state.progress,
+            WidgetProgressStrip(timerRange: context.attributes.timerRange,
                                 breakSegments: context.attributes.breakSegments)
 
             HStack {
-                Text("午休晚休已自动扣除")
+                Text("打开 App 自动刷新金额")
                 Spacer()
                 if context.isStale {
-                    Text("数据待刷新")
+                    Text("金额待刷新")
                         .foregroundStyle(WidgetPalette.overtime)
                 }
             }
@@ -137,18 +139,16 @@ private struct LockScreenView: View {
 }
 
 private struct WidgetProgressStrip: View {
-    var progress: Double
+    var timerRange: ClosedRange<Date>
     var breakSegments: [WorkAttributes.BreakSegment]
 
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
             ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(WidgetPalette.track)
-                Capsule()
-                    .fill(WidgetPalette.accent)
-                    .frame(width: width * min(max(progress, 0), 1))
+                ProgressView(timerInterval: timerRange, countsDown: false)
+                    .progressViewStyle(.linear)
+                    .tint(WidgetPalette.accent)
                 ForEach(breakSegments, id: \.self) { segment in
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
                         .fill(WidgetPalette.restSegment)
@@ -161,13 +161,12 @@ private struct WidgetProgressStrip: View {
                 }
             }
         }
-        .frame(height: 7)
+        .frame(height: 8)
     }
 }
 
 private enum WidgetPalette {
     static let surface = Color(red: 0.07, green: 0.08, blue: 0.10)
-    static let track = Color.white.opacity(0.16)
     static let accent = Color(red: 0.22, green: 0.95, blue: 0.55)
     static let restSegment = Color(red: 0.95, green: 0.64, blue: 0.26).opacity(0.48)
     static let restBorder = Color(red: 1.00, green: 0.82, blue: 0.45).opacity(0.86)
