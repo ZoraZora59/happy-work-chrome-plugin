@@ -1,0 +1,17 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <path d="M42,90 L42,73 Q42,58 60,58 Q78,58 78,73 L78,90 Q78,92 76,92 L44,92 Q42,92 42,90 Z" fill="#34DD84"/>
+  <path d="M47,63 L44,82" stroke="#28B86E" stroke-width="8" stroke-linecap="round"/>
+  <path d="M73,63 L76,82" stroke="#28B86E" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="60" cy="40" r="18" fill="#F2D1AE"/>
+  <path d="M51,40 h6" stroke="#20463A" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M63,40 h6" stroke="#20463A" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M56,48 h8" stroke="#20463A" stroke-width="2.2" stroke-linecap="round"/>
+  <rect x="44" y="66" width="32" height="20" rx="2.5" fill="#F5EFE3"/>
+  <rect x="47.5" y="69" width="25" height="14" rx="1.5" fill="#1F7A57"/>
+  <rect x="39" y="85" width="42" height="5.5" rx="2.7" fill="#FF9A3D"/>
+  <circle cx="43" cy="84" r="4" fill="#F2D1AE"/>
+  <circle cx="77" cy="84" r="4" fill="#F2D1AE"/>
+  <circle cx="98" cy="22" r="8" fill="#FFD37A"/>
+  <path d="M84,16 L85.4,18.6 L88,20 L85.4,21.4 L84,24 L82.6,21.4 L80,20 L82.6,18.6 Z" fill="#FFD37A"/>
+  <path d="M77,30 C80,35 80,39 77,39 C74,39 74,35 77,30 Z" fill="#7FC8E8"/>
+</svg>

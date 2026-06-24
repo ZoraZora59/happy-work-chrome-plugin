@@ -16,6 +16,36 @@ struct WorkAttributes: ActivityAttributes {
         var endRatio: Double
     }
 
+    /// 打工阶段。锁屏/动态岛据此切换「状态小人」插画。
+    ///
+    /// 与金额同理：阶段判定需要每秒重算，系统无法在锁屏上自行推进，因此它也是**快照**——
+    /// 锁屏无推送时会冻结在上次 update 的阶段（例如进了午休但不会自动切到 `.onBreak`）。
+    /// 由 App 侧用 `EarningsSnapshot` 的布尔状态算出（见 `LiveActivityManager`），
+    /// 避免在 Widget 里硬匹配 App-only 的中文 `statusTitle` 字面量。
+    public enum WorkPhase: String, Codable, Hashable {
+        case beforeWork   // 还没上班
+        case working      // 计薪中
+        case onBreak      // 休息中
+        case overtime     // 加班中
+        case finished     // 今日已收工
+
+        /// 自定义小人插画的 asset 名称（矢量图在 `HappyWorkWidget/Assets.xcassets`）。
+        /// 锁屏卡片与动态岛展开区用这套插画。
+        var assetName: String { "phase-\(rawValue)" }
+
+        /// 兜底 SF Symbol。动态岛**紧凑区**尺寸太小（~16pt），插画糊成一团，
+        /// 那里仍用符号；插画资源缺失时也可回退到它。
+        var symbolName: String {
+            switch self {
+            case .beforeWork: return "bed.double.fill"
+            case .working:    return "figure.walk"
+            case .onBreak:    return "cup.and.saucer.fill"
+            case .overtime:   return "flame.fill"
+            case .finished:   return "checkmark.seal.fill"
+            }
+        }
+    }
+
     public struct ContentState: Codable, Hashable {
         /// `asOf` 时刻已赚取金额（元）。下次 update 前保持不变。
         var earned: Double
@@ -31,6 +61,8 @@ struct WorkAttributes: ActivityAttributes {
         var statusTitle: String
         /// 是否已进入加班计薪。
         var isOvertime: Bool
+        /// 当前打工阶段，用于切换状态小人插画。同为快照，锁屏无推送时冻结。
+        var phase: WorkPhase
     }
 
     /// 有效时薪（由月薪、年终奖、计薪天数、有效工时折算），元/小时。

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		112C410A9A8666BB49177359 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 68440DBA86A996A10E5CC371 /* Assets.xcassets */; };
 		219598A68F1B882F0FD198F4 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C367F842EE170470D42C4E30 /* LiveActivityManager.swift */; };
 		22A3316B42B7CBE5603C18B8 /* HappyWorkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D9624CCE269E19FF67F7F0 /* HappyWorkTests.swift */; };
 		27021CCFD0D09B8634B49852 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C9D172357C7F64A8FE69A091 /* PrivacyInfo.xcprivacy */; };
@@ -68,6 +69,7 @@
 		537EBB668E5AA9854F2D1EA0 /* HappyWork.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HappyWork.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5DF1F9BF2668994668514197 /* EarningsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EarningsModel.swift; sourceTree = "<group>"; };
 		660EE55BC284906CC531234D /* WorkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSession.swift; sourceTree = "<group>"; };
+		68440DBA86A996A10E5CC371 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9118AF155906FBA6323D5046 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9D55F718CA328F528F27F9D5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A274F8DA8184B93C7333E6DD /* WorkAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkAttributes.swift; sourceTree = "<group>"; };
@@ -96,6 +98,7 @@
 		32B0C634EF460A849AA3529F /* HappyWorkWidget */ = {
 			isa = PBXGroup;
 			children = (
+				68440DBA86A996A10E5CC371 /* Assets.xcassets */,
 				0398FF2430F1C43ADFD9C399 /* HappyWorkLiveActivity.swift */,
 				2BAB08F3710E2B6C9B5F72F4 /* HappyWorkWidgetBundle.swift */,
 				9118AF155906FBA6323D5046 /* Info.plist */,
@@ -277,6 +280,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				112C410A9A8666BB49177359 /* Assets.xcassets in Resources */,
 				27021CCFD0D09B8634B49852 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

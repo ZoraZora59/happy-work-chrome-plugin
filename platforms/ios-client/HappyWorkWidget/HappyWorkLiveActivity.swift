@@ -15,13 +15,16 @@ struct HappyWorkLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("截至 \(context.state.asOf, format: .dateTime.hour().minute())")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Text("¥" + money(context.state.earned))
-                            .font(.title3.bold())
-                            .monospacedDigit()
+                    HStack(spacing: 8) {
+                        PhaseAvatar(phase: context.state.phase, size: 34)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("截至 \(context.state.asOf, format: .dateTime.hour().minute())")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text("¥" + money(context.state.earned))
+                                .font(.title3.bold())
+                                .monospacedDigit()
+                        }
                     }
                 }
 
@@ -51,8 +54,9 @@ struct HappyWorkLiveActivity: Widget {
                     }
                 }
             } compactLeading: {
-                Text(context.state.isOvertime ? "加班" : "计薪")
-                    .font(.caption.bold())
+                Image(systemName: context.state.phase.symbolName)
+                    .font(.caption)
+                    .foregroundStyle(context.state.phase == .overtime ? WidgetPalette.overtime : WidgetPalette.accent)
             } compactTrailing: {
                 Text(timerInterval: context.attributes.timerRange, countsDown: true)
                     .font(.caption2.bold())
@@ -73,6 +77,8 @@ private struct LockScreenView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
+                PhaseAvatar(phase: context.state.phase)
+
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text("HappyWork")
@@ -127,6 +133,22 @@ private struct LockScreenView: View {
     }
 }
 
+/// 锁屏左上角的「状态小人」位：自定义插画 + 略亮的圆角托盘。
+private struct PhaseAvatar: View {
+    let phase: WorkAttributes.WorkPhase
+    var size: CGFloat = 44
+
+    var body: some View {
+        Image(phase.assetName)
+            .resizable()
+            .scaledToFit()
+            .padding(size * 0.16)
+            .frame(width: size, height: size)
+            .background(WidgetPalette.iconSurface,
+                        in: RoundedRectangle(cornerRadius: size * 0.27, style: .continuous))
+    }
+}
+
 private struct WidgetProgressStrip: View {
     var timerRange: ClosedRange<Date>
     var breakSegments: [WorkAttributes.BreakSegment]
@@ -162,6 +184,8 @@ private struct WidgetProgressStrip: View {
 
 private enum WidgetPalette {
     static let surface = Color(red: 0.07, green: 0.08, blue: 0.10)
+    /// 状态小人位的底色，比卡片背景略亮，做出「托盘」层次。
+    static let iconSurface = Color(red: 0.13, green: 0.15, blue: 0.17)
     static let accent = Color(red: 0.22, green: 0.95, blue: 0.55)
     static let restSegment = Color(red: 0.96, green: 0.66, blue: 0.30)
     static let overtime = Color(red: 1.0, green: 0.58, blue: 0.24)

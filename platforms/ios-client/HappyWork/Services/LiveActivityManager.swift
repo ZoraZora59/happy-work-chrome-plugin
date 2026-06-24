@@ -67,7 +67,18 @@ final class LiveActivityManager: ObservableObject {
                                     asOf: Date(),
                                     mood: s.mood.rawValue,
                                     statusTitle: s.statusTitle,
-                                    isOvertime: s.isOvertime)
+                                    isOvertime: s.isOvertime,
+                                    phase: phase(for: s))
+    }
+
+    /// 由收入快照映射打工阶段。**判定优先级与 `EarningsSnapshot.statusTitle` 保持一致**，
+    /// 二者改动需同步，避免小人插画与状态文案对不上。
+    private func phase(for s: EarningsSnapshot) -> WorkAttributes.WorkPhase {
+        if s.isOvertime { return .overtime }
+        if s.isFinished { return .finished }
+        if s.isBeforeWork { return .beforeWork }
+        if s.isOnBreak { return .onBreak }
+        return .working
     }
 
     private func makeContent(snapshot: EarningsSnapshot, session: WorkSession) -> ActivityContent<WorkAttributes.ContentState> {
