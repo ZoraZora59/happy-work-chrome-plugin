@@ -697,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 其他UI更新
     const mood = updateMoodDisplay(progressPercent, afterWorkSeconds > 0, zenMode);
-    updateAmbientFx(currentBaseIncome, progressPercent, zenMode, mood, item, itemCount);
+    updateAmbientFx(currentBaseIncome, targetDailyIncome, progressPercent, zenMode, mood, item, itemCount);
 
     const incomeIncreaseSinceLastTick = currentBaseIncome - (workState.baseIncome || 0);
     if (incomeIncreaseSinceLastTick > 0.001 && !zenMode && isCurrentlyWorkingCheck && Date.now() >= introHoldUntil) {
@@ -755,8 +755,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // 氛围特效：钱袋随进度变鼓、星星密度、开场数钱、金笔打勾、进度里程碑
-  function updateAmbientFx(currentBaseIncome, progressPercent, zenMode, mood, item, itemCount) {
+  // 氛围特效：财宝堆随收入升级、星星密度、开场数钱、金笔打勾、进度里程碑
+  function updateAmbientFx(currentBaseIncome, dailyGoal, progressPercent, zenMode, mood, item, itemCount) {
     HappyFx.setEnabled(!zenMode);
     HappyFx.setMood(mood);
 
@@ -776,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function () {
           to: currentBaseIncome,
           awayMs,
           isNewDay: introSnapshot.isNewDay,
-          progress: progressPercent
+          goal: dailyGoal
         });
         const gainedItems = hasItem ? itemCount - Math.floor(introSnapshot.baseIncome / item.price) : 0;
         if (gainedItems > 0) {
@@ -789,7 +789,7 @@ document.addEventListener('DOMContentLoaded', function () {
     lastItemKey = itemKey;
     lastItemCount = itemCount;
 
-    HappyFx.setProgress(progressPercent);
+    HappyFx.setIncome(currentBaseIncome, dailyGoal);
     if (!zenMode) {
       checkMilestones(progressPercent);
     }
