@@ -1,4 +1,4 @@
-// 氛围特效：小金袋攒钱、金币入袋、金笔打勾、小星星、里程碑庆祝
+// 氛围特效：财宝堆攒钱（金袋 → 宝箱 → 财宝山）、金币入袋、金笔打勾、小星星、里程碑庆祝
 // 只负责"演出"，不参与收入计算，由 popup.js 在合适的时机调用
 const HappyFx = (function () {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -10,45 +10,27 @@ const HappyFx = (function () {
   const MILESTONE_TEXT = {
     25: '干完 1/4 啦，稳住',
     50: '过半啦，胜利在望',
-    75: '只剩 1/4，冲！',
-    100: '今天的钱袋装满啦，收工！'
+    75: '只剩 1/4，冲！'
+  };
+
+  // 下班那一刻，按当时攒到的财宝说一句
+  const DONE_TEXT = {
+    bag: '今天的钱袋装满啦，收工！',
+    chest: '今天的宝箱装满啦，收工！',
+    mountain: '今天攒出一座金山，收工！'
+  };
+
+  // 升档提示，key 为升到的档位
+  const TIER_UP_TEXT = {
+    2: '攒够 ¥500，钱袋多了一个',
+    3: '破 ¥1000，三袋金子啦',
+    4: '¥2000！三袋金子装进宝箱',
+    5: '¥3000！又装满一箱',
+    6: '¥4000！宝箱摞起来了',
+    7: '¥5000！堆出一座财宝山'
   };
 
   const STAR_PATH = 'M12 0C12.9 8.2 15.8 11.1 24 12C15.8 12.9 12.9 15.8 12 24C11.1 15.8 8.2 12.9 0 12C8.2 11.1 11.1 8.2 12 0Z';
-
-  const BAG_SVG = `
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <defs>
-        <linearGradient id="fxBagGold" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#FFE58A"/>
-          <stop offset="0.45" stop-color="#FFC928"/>
-          <stop offset="1" stop-color="#DE9600"/>
-        </linearGradient>
-        <linearGradient id="fxBagTie" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#C98400"/>
-          <stop offset="1" stop-color="#9A5E00"/>
-        </linearGradient>
-        <radialGradient id="fxBagCoin" cx="0.35" cy="0.35" r="0.7">
-          <stop offset="0" stop-color="#FFF6C4"/>
-          <stop offset="0.5" stop-color="#FFD23F"/>
-          <stop offset="1" stop-color="#E3A000"/>
-        </radialGradient>
-      </defs>
-      <ellipse cx="32" cy="61" rx="17" ry="2.5" fill="rgba(0,0,0,0.08)"/>
-      <g class="fx-bag-coin fx-bag-coin-1">
-        <circle cx="27" cy="9" r="5" fill="url(#fxBagCoin)" stroke="#C98A00" stroke-width="1"/>
-      </g>
-      <g class="fx-bag-coin fx-bag-coin-2">
-        <circle cx="36.5" cy="8" r="5" fill="url(#fxBagCoin)" stroke="#C98A00" stroke-width="1"/>
-        <circle cx="32" cy="4.5" r="4.5" fill="url(#fxBagCoin)" stroke="#C98A00" stroke-width="1"/>
-      </g>
-      <path d="M24 19C21 15 21 10.5 25 9.5C27 12 29.5 13 32 12.2C34.5 13 37 12 39 9.5C43 10.5 43 15 40 19Z" fill="url(#fxBagGold)" stroke="#C98A00" stroke-width="1"/>
-      <path d="M24 22C14 27 8 38 8 47C8 56 17 60 32 60C47 60 56 56 56 47C56 38 50 27 40 22Z" fill="url(#fxBagGold)" stroke="#C98A00" stroke-width="1"/>
-      <rect x="21.5" y="18" width="21" height="5.5" rx="2.75" fill="url(#fxBagTie)"/>
-      <path d="M35 23.5c2.5 3 2.5 6 0.5 8.5" stroke="#9A5E00" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-      <ellipse cx="19" cy="40" rx="3.2" ry="8" fill="#fff" opacity="0.35" transform="rotate(20 19 40)"/>
-      <text x="32" y="52" text-anchor="middle" font-size="19" font-weight="800" fill="#A86A00" font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif">¥</text>
-    </svg>`;
 
   // 笔尖在 viewBox 的 (12, 23)，绕笔尖旋转，方便让笔尖沿着勾的轨迹走
   const PEN_SVG = `
@@ -78,16 +60,18 @@ const HappyFx = (function () {
   const STAR_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}"/></svg>`;
 
   let box = null;
-  let bagEl = null;
-  let bagBody = null; // 做"吞金币"形变的内层，外层负责随进度变鼓
+  let sceneEl = null;
+  let sceneBody = null; // 下班庆祝时整体摇晃、炸开的那一层
+  let treasure = null;
   let toastEl = null;
   let toastTimer = null;
   let stars = [];
   let starLevel = 0;
   let enabled = true;
-  let currentFill = -1;
-  let targetFill = 0;
-  let introActive = false; // 开场动画期间，钱袋由金币一枚枚"喂"鼓
+  let targetIncome = 0;
+  let targetGoal = 0;
+  let treasureReady = false; // 拿到第一笔真实收入前只摆个空钱袋，第一次摆放不播升档动画
+  let introActive = false; // 开场动画期间，财宝由金币一枚枚"喂"大
   let queue = Promise.resolve();
 
   // ---------- 挂载 ----------
@@ -110,12 +94,13 @@ const HappyFx = (function () {
     }
     box.appendChild(starsEl);
 
-    bagEl = document.createElement('div');
-    bagEl.className = 'fx-bag';
-    bagEl.innerHTML = `<div class="fx-bag-body">${BAG_SVG}</div>`;
-    bagBody = bagEl.firstElementChild;
-    box.appendChild(bagEl);
-    applyFill(0);
+    sceneEl = document.createElement('div');
+    sceneEl.className = 'fx-treasure';
+    sceneEl.innerHTML = '<div class="fx-treasure-body"></div>';
+    sceneBody = sceneEl.firstElementChild;
+    treasure = HappyTreasure.create(sceneBody);
+    treasure.set(0, Infinity, false);
+    box.appendChild(sceneEl);
 
     toastEl = document.createElement('div');
     toastEl.className = 'fx-toast';
@@ -137,33 +122,65 @@ const HappyFx = (function () {
     return enabled && !reduceMotion && box !== null;
   }
 
-  // ---------- 小金袋 ----------
+  // ---------- 财宝堆 ----------
 
-  function setProgress(percent) {
-    targetFill = Math.max(0, Math.min(1, percent / 100));
-    if (!introActive) applyFill(targetFill);
+  // income 为今日已赚，goal 为今日应得（决定收工时最新那件是否装满）
+  function setIncome(income, goal) {
+    targetIncome = income;
+    targetGoal = goal;
+    if (!introActive) applyIncome(income, true);
   }
 
-  function applyFill(fill) {
-    if (!bagEl || Math.abs(fill - currentFill) < 0.002) return;
-    currentFill = fill;
-    bagEl.style.setProperty('--fx-fill', fill.toFixed(3));
-    bagEl.dataset.level = fill >= 0.99 ? '3' : fill >= 0.67 ? '2' : fill >= 0.34 ? '1' : '0';
+  function applyIncome(income, announce) {
+    if (!treasure) return;
+    const wasReady = treasureReady;
+    const change = treasure.set(income, targetGoal, canAnimate() && wasReady);
+    treasureReady = true;
+    if (wasReady && change && change.to > change.from) {
+      tierUp(change.to, announce);
+    }
+  }
+
+  // 升档：新的一件弹出来时冒一把金币；开场回放期间不弹提示，免得盖住开场文案
+  // 减少动态效果时不冒金币，只留文字提示
+  function tierUp(tier, announce) {
+    const at = mouth();
+    setTimeout(() => {
+      if (!canAnimate()) return;
+      for (let i = 0; i < 10; i++) {
+        const kind = i % 3 === 0 ? 'star' : 'coin';
+        const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.2;
+        const speed = 90 + Math.random() * 110;
+        spawnFly(kind, at, {
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          gravity: 380,
+          life: 0.7 + Math.random() * 0.3,
+          size: kind === 'coin' ? 11 + Math.random() * 4 : 10 + Math.random() * 5
+        });
+      }
+    }, 320);
+    if (announce && TIER_UP_TEXT[tier]) {
+      enqueue(() => new Promise(resolve => {
+        toast(TIER_UP_TEXT[tier], 2600);
+        setTimeout(resolve, 1200);
+      }));
+    }
   }
 
   function gulp() {
     if (!canAnimate()) return;
-    bagBody.animate([
+    treasure.newestInner().animate([
       { transform: 'scale(1, 1)' },
-      { transform: 'scale(1.14, 0.86)', offset: 0.3 },
-      { transform: 'scale(0.94, 1.08)', offset: 0.6 },
+      { transform: 'scale(1.12, 0.88)', offset: 0.3 },
+      { transform: 'scale(0.95, 1.06)', offset: 0.6 },
       { transform: 'scale(1, 1)' }
     ], { duration: 320, easing: 'ease-out' });
   }
 
-  function bagMouth() {
-    const r = bagEl.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height * 0.28 };
+  // 金币飞进来的落点：最新那件的袋口 / 箱口 / 山顶
+  function mouth() {
+    return treasure.mouth();
   }
 
   // ---------- 小星星 ----------
@@ -194,7 +211,7 @@ const HappyFx = (function () {
       box.querySelector('.income-percent').getBoundingClientRect(),
       box.querySelector('.income-progress').getBoundingClientRect()
     ].map(r => toLocal(r, base, 4));
-    blocked.push(toLocal(bagEl.getBoundingClientRect(), base, -8));
+    blocked.push(toLocal(sceneEl.getBoundingClientRect(), base, -8));
 
     const size = 8 + Math.random() * 7;
     let x = 0;
@@ -253,12 +270,15 @@ const HappyFx = (function () {
     return queue;
   }
 
-  // 开场：离开期间赚的钱化作金币飞进钱袋
+  // 开场：离开期间赚的钱化作金币飞进财宝堆，一路回放金袋变多、装箱的过程
   function playIntro(info) {
     introActive = !reduceMotion;
-    targetFill = Math.max(0, Math.min(1, info.progress / 100));
-    const startFill = info.to > 0 ? targetFill * Math.max(0, info.from / info.to) : 0;
-    if (introActive) applyFill(startFill);
+    targetIncome = info.to;
+    targetGoal = info.goal;
+    if (introActive) {
+      treasure.set(info.from, info.goal, false);
+      treasureReady = true;
+    }
 
     return enqueue(() => new Promise(resolve => {
       const gained = info.to - info.from;
@@ -272,7 +292,7 @@ const HappyFx = (function () {
         if (finished) return;
         finished = true;
         introActive = false;
-        applyFill(targetFill);
+        applyIncome(targetIncome, false);
         setTimeout(resolve, 250);
       };
       if (!canAnimate()) {
@@ -282,10 +302,10 @@ const HappyFx = (function () {
 
       const count = Math.max(4, Math.min(24, Math.round(4 + Math.log2(1 + gained) * 2.5)));
       const src = textRect(box.querySelector('.income-value'));
-      const to = bagMouth();
       let arrived = 0;
       for (let i = 0; i < count; i++) {
         const from = { x: src.left + Math.random() * src.width, y: src.top + src.height * 0.5 };
+        const to = mouth();
         spawnArc('coin', from, to, {
           ctrl: { x: from.x + (to.x - from.x) * 0.3, y: Math.min(from.y, to.y) - 50 - Math.random() * 40 },
           delay: i * (1 / count) + Math.random() * 0.05,
@@ -293,10 +313,10 @@ const HappyFx = (function () {
           size: 14 + Math.random() * 6,
           onArrive: () => {
             arrived++;
-            applyFill(startFill + (targetFill - startFill) * (arrived / count));
+            applyIncome(info.from + gained * (arrived / count), false);
             gulp();
             if (arrived === count) {
-              sparkleAt(to, 5);
+              sparkleAt(mouth(), 5);
               finish();
             }
           }
@@ -366,8 +386,8 @@ const HappyFx = (function () {
         // 物品图标飞进钱袋
         const flyer = addLayerEl('fx-flyer', 0, 0);
         flyer.textContent = icon;
-        const mouth = bagMouth();
-        flyDom(flyer, { x: bubbleX, y: bubbleY - 18 }, { x: mouth.x - base.left, y: mouth.y - base.top }, 650, 350, gulp);
+        const target = mouth();
+        flyDom(flyer, { x: bubbleX, y: bubbleY - 18 }, { x: target.x - base.left, y: target.y - base.top }, 650, 350, gulp);
       }, 520);
 
       setTimeout(() => check.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }), 1300);
@@ -380,9 +400,9 @@ const HappyFx = (function () {
     }));
   }
 
-  // 进度里程碑：25/50/75 在进度条对应位置迸出星星；100 时钱袋炸开
+  // 进度里程碑：25/50/75 在进度条对应位置迸出星星；100 时财宝堆炸开
   function milestone(percent) {
-    return enqueue(() => (percent >= 100 ? burstBag() : burstProgress(percent)));
+    return enqueue(() => (percent >= 100 ? burstTreasure() : burstProgress(percent)));
   }
 
   function burstProgress(percent) {
@@ -410,15 +430,14 @@ const HappyFx = (function () {
     });
   }
 
-  function burstBag() {
+  function burstTreasure() {
     return new Promise(resolve => {
-      toast(MILESTONE_TEXT[100], 3200);
-      applyFill(1);
+      toast(DONE_TEXT[treasure.kind()], 3200);
       if (!canAnimate()) {
         setTimeout(resolve, 500);
         return;
       }
-      const wiggle = bagBody.animate([
+      const wiggle = sceneBody.animate([
         { transform: 'rotate(0deg)' },
         { transform: 'rotate(-14deg)', offset: 0.2 },
         { transform: 'rotate(12deg)', offset: 0.4 },
@@ -428,11 +447,11 @@ const HappyFx = (function () {
       ], { duration: 520, easing: 'ease-in-out' });
 
       wiggle.onfinish = () => {
-        const r = bagEl.getBoundingClientRect();
-        const center = { x: r.left + r.width / 2, y: r.top + r.height * 0.5 };
+        const r = sceneEl.getBoundingClientRect();
+        const center = { x: r.left + r.width * 0.6, y: r.top + r.height * 0.6 };
         const base = box.getBoundingClientRect();
 
-        bagBody.animate([
+        sceneBody.animate([
           { transform: 'scale(1)', opacity: 1 },
           { transform: 'scale(1.5)', opacity: 0 }
         ], { duration: 220, easing: 'ease-out', fill: 'forwards' });
@@ -457,7 +476,7 @@ const HappyFx = (function () {
         }
 
         setTimeout(() => {
-          bagBody.animate([
+          sceneBody.animate([
             { transform: 'scale(0)', opacity: 0 },
             { transform: 'scale(1.15)', opacity: 1, offset: 0.6 },
             { transform: 'scale(1)', opacity: 1 }
@@ -468,10 +487,10 @@ const HappyFx = (function () {
     });
   }
 
-  // 常规收入跳动时，顺手弹一枚金币进钱袋
+  // 常规收入跳动时，顺手弹一枚金币进财宝堆
   function tickCoin(x, y) {
     if (!canAnimate()) return;
-    const to = bagMouth();
+    const to = mouth();
     spawnArc('coin', { x, y }, to, {
       ctrl: { x: (x + to.x) / 2, y: Math.min(y, to.y) - 40 - Math.random() * 30 },
       dur: 0.7 + Math.random() * 0.2,
@@ -721,7 +740,7 @@ const HappyFx = (function () {
   return {
     mount,
     setEnabled,
-    setProgress,
+    setIncome,
     setMood,
     tickCoin,
     playIntro,
