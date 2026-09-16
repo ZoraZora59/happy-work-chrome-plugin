@@ -344,6 +344,11 @@ document.addEventListener('DOMContentLoaded', function () {
   function animateValue(element, start, end, duration = 500) {
     const token = {};
     element._animToken = token; // 新动画开始时，旧动画自动停下，避免多个动画抢着改数字
+    // 差距不到 5 分钱时直接显示目标值：每 100ms 就会重启一次动画、播不到终点，逐帧四舍五入后会卡在差一两分钱的位置
+    if (Math.abs(end - start) < 0.05) {
+      element.textContent = `¥${end.toFixed(2)}`;
+      return;
+    }
     let startTimestamp = null;
     const step = (timestamp) => {
       if (element._animToken !== token) return;
