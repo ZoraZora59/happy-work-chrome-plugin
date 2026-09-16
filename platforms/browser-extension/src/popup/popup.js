@@ -20,6 +20,23 @@ document.addEventListener('DOMContentLoaded', function () {
   let workState = null; // 在内存中维护的工作状态
   let lastSaveTime = 0; // 上次保存状态到硬盘的时间
 
+  // 氛围特效相关状态
+  let fxState = null; // 今日已庆祝过的进度里程碑 { date, celebrated }
+  let introSnapshot = null; // 上次关闭弹窗时的收入快照，用于开场动画
+  let introDone = false;
+  let introHoldUntil = 0; // 开场数钱期间，暂停常规的数字刷新和冒字特效
+  let lastItemKey = null; // 价值物品切换时重置计数，不补放打勾
+  let lastItemCount = 0;
+
+  const MILESTONES = [25, 50, 75, 100];
+  const VALUE_ITEMS = {
+    cola: { price: 3, unit: '瓶可乐', icon: '🥤' },
+    chicken: { price: 14, unit: '个辣翅', icon: '🍗' },
+    burger: { price: 28, unit: '个巨无霸', icon: '🍔' }
+  };
+
+  HappyFx.mount(document.querySelector('.income-box'));
+
   // Click listeners for modal
   if(buyCoffeeBtn && coffeeModal && closeButton) {
     buyCoffeeBtn.onclick = function(event) {
@@ -56,7 +73,18 @@ document.addEventListener('DOMContentLoaded', function () {
         loadedState = syncResult.workState;
     }
 
-    if (!loadedState || loadedState.date !== today) {
+    const isNewDay = !loadedState || loadedState.date !== today;
+    if (!introDone) {
+      introSnapshot = isNewDay
+        ? { baseIncome: 0, lastUpdateTime: Date.now(), isNewDay: true }
+        : { baseIncome: loadedState.baseIncome || 0, lastUpdateTime: loadedState.lastUpdateTime || Date.now(), isNewDay: false };
+    }
+    if (!fxState) {
+      const fxData = await chrome.storage.local.get('fxState');
+      fxState = fxData.fxState || null;
+    }
+
+    if (isNewDay) {
       // 新的一天，重置状态
       workState = {
         date: today,
@@ -311,8 +339,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // 数字跳动动画
   function animateValue(element, start, end, duration = 500) {
+    const token = {};
+    element._animToken = token; // 新动画开始时，旧动画自动停下，避免多个动画抢着改数字
     let startTimestamp = null;
     const step = (timestamp) => {
+      if (element._animToken !== token) return;
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
       element.textContent = `¥${(progress * (end - start) + start).toFixed(2)}`;
@@ -391,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function () {
         description: '马上就要下班啦！',
         effectMultiplier: 2.0,
         animationSpeed: 1.5,
-        colors: ['#ff6b6b', '#ffa726', '#ffeb3b', '#66bb6a', '#3ec6c1'],
+        colors: ['#e09a00', '#f2a900', '#d48806', '#3ec6c1'],
         intervalMultiplier: 0.5
       };
     } else {
@@ -401,7 +432,7 @@ document.addEventListener('DOMContentLoaded', function () {
         description: '最后几分钟！！！',
         effectMultiplier: 5.0,
         animationSpeed: 2.0,
-        colors: ['#ff1744', '#ff6d00', '#ffea00', '#76ff03', '#00e5ff', '#d500f9'],
+        colors: ['#e09a00', '#f2a900', '#d48806', '#ffb300'],
         intervalMultiplier: 0.2
       };
     }
@@ -477,6 +508,8 @@ document.addEventListener('DOMContentLoaded', function () {
         break;
     }
     
+    const effectLeft = Math.random() * 180 + 60;
+    const effectTop = 40 + Math.random() * 20;
     effect.style.cssText = `
       position: absolute;
       color: ${color};
@@ -484,17 +517,21 @@ document.addEventListener('DOMContentLoaded', function () {
       font-size: ${fontSize}em;
       pointer-events: none;
       animation: ${animationName} ${animationDuration}s ease-out forwards;
-      left: ${Math.random() * 180 + 60}px;
-      top: ${40 + Math.random() * 20}px;
+      left: ${effectLeft}px;
+      top: ${effectTop}px;
       z-index: 1000;
       text-shadow: 0 0 ${8 * moodState.animationSpeed}px ${color}66;
       transform: ${extraTransform};
     `;
-    
+
     container.style.position = 'relative';
     container.appendChild(effect);
     effectCount++;
     lastEffectTime = now;
+
+    // 同时弹出一枚金币飞进钱袋
+    const boxRect = container.getBoundingClientRect();
+    HappyFx.tickCoin(boxRect.left + effectLeft + 16, boxRect.top + effectTop + 10);
     
     // 根据心情状态调整清理时间
     let cleanupTime = animationDuration * 1000;
@@ -606,7 +643,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // 更新UI - 实时收入
     displayIncome = currentBaseIncome;
     const previousDisplayIncome = parseFloat(incomeValue.textContent.replace('¥', '')) || displayIncome;
-    animateValue(incomeValue, previousDisplayIncome, displayIncome, 500);
+    if (now >= introHoldUntil) {
+      animateValue(incomeValue, previousDisplayIncome, displayIncome, 500);
+    }
     
     const progressPercent = dailyWorkSeconds > 0 ? (normalSeconds / dailyWorkSeconds) * 100 : 0;
     progressBar.style.width = `${Math.min(100, progressPercent)}%`;
@@ -622,22 +661,11 @@ document.addEventListener('DOMContentLoaded', function () {
     todayValue.textContent = `¥${Math.round(todayDisplayIncome)}`;
 
     // 更新UI - 价值描述
-    let valueText = '';
-    
-    if (valueItem === 'cola') {
-      const count = Math.floor(currentBaseIncome / 3);
-      valueText = `约等于 ${count} 瓶可乐`;
-    } else if (valueItem === 'chicken') {
-      const count = Math.floor(currentBaseIncome / 14);
-      valueText = `约等于 ${count} 个辣翅`;
-    } else if (valueItem === 'burger') {
-        const count = Math.floor(currentBaseIncome / 28);
-        valueText = `约等于 ${count} 个巨无霸`;
-    } else if (valueItem === 'custom') {
-      const count = Math.floor(currentBaseIncome / parseFloat(customItemPrice));
-      valueText = `约等于 ${count} 个${customItemName}`;
-    }
-    incomeDesc.textContent = valueText;
+    const item = valueItem === 'custom'
+      ? { price: parseFloat(customItemPrice), unit: `个${customItemName}`, icon: '🎁' }
+      : VALUE_ITEMS[valueItem];
+    const itemCount = item ? Math.floor(currentBaseIncome / item.price) : 0;
+    incomeDesc.textContent = item ? `约等于 ${itemCount} ${item.unit}` : '';
 
 
     // 更新UI - 倒计时
@@ -656,10 +684,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     
     // 其他UI更新
-    updateMoodDisplay(progressPercent, afterWorkSeconds > 0, zenMode);
-    
+    const mood = updateMoodDisplay(progressPercent, afterWorkSeconds > 0, zenMode);
+    updateAmbientFx(currentBaseIncome, progressPercent, zenMode, mood, item, itemCount);
+
     const incomeIncreaseSinceLastTick = currentBaseIncome - (workState.baseIncome || 0);
-    if (incomeIncreaseSinceLastTick > 0.001 && !zenMode && isCurrentlyWorkingCheck) {
+    if (incomeIncreaseSinceLastTick > 0.001 && !zenMode && isCurrentlyWorkingCheck && Date.now() >= introHoldUntil) {
         const moodState = getWorkMoodState(progressPercent);
         
         // 基础概率计算（根据金额大小）
@@ -714,111 +743,57 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function triggerMoneyRain(progressPercent) {
-    const rainCount = 3 + Math.floor(Math.random() * 4); // 减少到3-6个特效
-    const baseAmounts = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0];
-    
-    for (let i = 0; i < rainCount; i++) {
-      setTimeout(() => {
-        const randomAmount = baseAmounts[Math.floor(Math.random() * baseAmounts.length)];
-        addMoneyEffect(randomAmount, progressPercent);
-      }, i * 80 + Math.random() * 120); // 增加间隔，减少同时特效数量
+  // 氛围特效：钱袋随进度变鼓、星星密度、开场数钱、金笔打勾、进度里程碑
+  function updateAmbientFx(currentBaseIncome, progressPercent, zenMode, mood, item, itemCount) {
+    HappyFx.setEnabled(!zenMode);
+    HappyFx.setMood(mood);
+
+    const hasItem = item && item.price > 0;
+    const itemKey = hasItem ? `${item.unit}@${item.price}` : '';
+
+    if (!introDone) {
+      // 弹窗打开后第一次算出收入：把离开期间赚的钱演一遍
+      introDone = true;
+      const gained = currentBaseIncome - introSnapshot.baseIncome;
+      const awayMs = Date.now() - introSnapshot.lastUpdateTime;
+      if (!zenMode && gained >= 0.5 && (introSnapshot.isNewDay || awayMs >= 60000)) {
+        introHoldUntil = Date.now() + 1400;
+        animateValue(incomeValue, introSnapshot.baseIncome, currentBaseIncome, 1300);
+        HappyFx.playIntro({
+          from: introSnapshot.baseIncome,
+          to: currentBaseIncome,
+          awayMs,
+          isNewDay: introSnapshot.isNewDay,
+          progress: progressPercent
+        });
+        const gainedItems = hasItem ? itemCount - Math.floor(introSnapshot.baseIncome / item.price) : 0;
+        if (gainedItems > 0) {
+          HappyFx.penCheck(gainedItems, item.icon);
+        }
+      }
+    } else if (itemKey === lastItemKey && itemCount > lastItemCount && !zenMode) {
+      HappyFx.penCheck(itemCount - lastItemCount, item.icon);
+    }
+    lastItemKey = itemKey;
+    lastItemCount = itemCount;
+
+    HappyFx.setProgress(progressPercent);
+    if (!zenMode) {
+      checkMilestones(progressPercent);
     }
   }
-  
-  function triggerTreasureExplosion(progressPercent) {
-    const container = document.querySelector('.income-box');
-    if (!container) return;
-    
-    // 添加震屏效果
-    const mainContainer = document.querySelector('.container');
-    if (mainContainer) {
-      mainContainer.classList.add('treasure-explosion-container');
-      setTimeout(() => {
-        mainContainer.classList.remove('treasure-explosion-container');
-      }, 500);
+
+  // 进度里程碑：每天每档只庆祝一次；一次跨过多档时只放最高那档
+  function checkMilestones(progressPercent) {
+    const today = new Date().toLocaleDateString();
+    if (!fxState || fxState.date !== today) {
+      fxState = { date: today, celebrated: [] };
     }
-    
-    // 创建爆炸中心点
-    const centerX = container.offsetWidth / 2;
-    const centerY = container.offsetHeight / 2;
-    
-    // 生成8-12个金钱粒子（减少数量提升性能）
-    const particleCount = 8 + Math.floor(Math.random() * 5);
-    const amounts = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0];
-    const symbols = ['¥', '$', '€', '💰', '💎', '✨', '⭐', '🎉', '🎊', '💸'];
-    
-    // 添加爆炸闪光效果
-    const flash = document.createElement('div');
-    flash.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0.4) 30%, transparent 70%);
-      pointer-events: none;
-      z-index: 1000;
-      animation: treasureFlash 0.3s ease-out forwards;
-    `;
-    container.appendChild(flash);
-    setTimeout(() => {
-      if (flash.parentNode) {
-        flash.parentNode.removeChild(flash);
-      }
-    }, 300);
-    
-    for (let i = 0; i < particleCount; i++) {
-      setTimeout(() => {
-        const particle = document.createElement('div');
-        particle.className = 'treasure-particle';
-        
-        // 随机选择内容和颜色
-        const isSymbol = Math.random() < 0.3; // 30%概率显示符号
-        if (isSymbol) {
-          particle.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-        } else {
-          const amount = amounts[Math.floor(Math.random() * amounts.length)];
-          particle.textContent = `+¥${amount.toFixed(1)}`;
-        }
-        
-        // 计算爆炸方向（360度随机分布）
-        const angle = (360 / particleCount) * i + Math.random() * 30 - 15; // 每个粒子有小范围随机偏移
-        const distance = 80 + Math.random() * 120; // 爆炸距离
-        const endX = centerX + Math.cos(angle * Math.PI / 180) * distance;
-        const endY = centerY + Math.sin(angle * Math.PI / 180) * distance;
-        
-        // 设置粒子样式
-        const colors = ['#ff1744', '#ff6d00', '#ffea00', '#76ff03', '#00e5ff', '#d500f9', '#ffd700'];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const size = 0.8 + Math.random() * 0.8; // 0.8-1.6em
-        
-        particle.style.cssText = `
-          position: absolute;
-          left: ${centerX}px;
-          top: ${centerY}px;
-          color: ${color};
-          font-weight: bold;
-          font-size: ${size}em;
-          pointer-events: none;
-          z-index: 1001;
-          text-shadow: 0 0 10px ${color}88;
-          animation: treasureExplosion 1.5s ease-out forwards;
-          --end-x: ${endX - centerX}px;
-          --end-y: ${endY - centerY}px;
-        `;
-        
-        container.style.position = 'relative';
-        container.appendChild(particle);
-        
-        // 清理粒子
-        setTimeout(() => {
-          if (particle.parentNode) {
-            particle.parentNode.removeChild(particle);
-          }
-        }, 1500);
-      }, i * 30); // 稍微增加间隔，减少瞬间计算负荷
-    }
+    const reached = MILESTONES.filter(m => progressPercent >= m && !fxState.celebrated.includes(m));
+    if (reached.length === 0) return;
+    fxState.celebrated.push(...reached);
+    chrome.storage.local.set({ fxState });
+    HappyFx.milestone(reached[reached.length - 1]);
   }
   
   function updateOvertimeButtonVisibility(todayWorkInfo, normalSeconds, dailyWorkSeconds) {
@@ -914,6 +889,8 @@ document.addEventListener('DOMContentLoaded', function () {
         container.classList.remove('zen-mode');
       }
     }
+
+    return moodState.mood;
   }
   
   // 启动更新循环
