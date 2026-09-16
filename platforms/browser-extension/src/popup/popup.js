@@ -606,21 +606,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     const todayWorkInfo = getTodayWorkType(workDays, overtimeSettings);
+
+    // 休息日整天都显示休息画面，不看钟点：开了休息日/节假日加班时不会是 off，下班后加班也只在工作日生效
+    // 否则上班时段会按工作日走进度、倒计时，还会弹里程碑
+    if (todayWorkInfo.type === 'off') {
+      showRestDay();
+      return;
+    }
+
     // 加班状态以 workState 为准，且只在开启了下班后加班的工作日生效（避免关掉设置后按钮隐藏、状态却关不掉）
     const isOvertimeActive = workState.overtimeActive === true && todayWorkInfo.afterWorkMultiplier !== undefined;
     const isCurrentlyWorkingCheck = isCurrentlyInWorkTime(workStart, workEnd, breaks, isOvertimeActive);
 
-    if (todayWorkInfo.type === 'off' && !isCurrentlyWorkingCheck) {
-      incomeValue.textContent = "休息日";
-      progressBar.style.width = '0%';
-      incomePercent.textContent = '0%';
-      todayValue.textContent = '¥0.00';
-      incomeDesc.textContent = '今天是休息日，好好放松吧！';
-      countdownLabel.textContent = '今天是休息日';
-      countdown.textContent = '好好放松吧';
-      return;
-    }
-    
     // 计算总工作秒数
     const dailyWorkMinutes = calculateWorkMinutes(workStart, workEnd, breaks);
     const dailyWorkSeconds = dailyWorkMinutes * 60;
@@ -753,6 +750,28 @@ document.addEventListener('DOMContentLoaded', function () {
         await chrome.storage.sync.set({ workState });
         lastSaveTime = now;
     }
+  }
+
+  // 休息日画面：不算收入、不走进度、不放特效
+  // 弹窗开着跨天进入休息日时，顺便清掉前一天留下的心情配色、星星、财宝堆和加班按钮
+  function showRestDay() {
+    incomeValue._animToken = null; // 停掉没播完的数字动画，免得把"休息日"又盖回金额
+    incomeValue.textContent = "休息日";
+    incomeValue.className = 'income-value';
+    progressBar.style.width = '0%';
+    progressBar.className = 'progress-bar';
+    incomePercent.textContent = '0%';
+    document.querySelector('.today-label').textContent = '今日到手';
+    todayValue.textContent = '¥0.00';
+    todayValue.className = 'today-value';
+    document.getElementById('todayBox').className = 'today-box';
+    incomeDesc.textContent = '今天是休息日，好好放松吧！';
+    countdownLabel.textContent = '今天是休息日';
+    countdown.textContent = '好好放松吧';
+    const overtimeBox = document.querySelector('.overtime-box');
+    if (overtimeBox) overtimeBox.style.display = 'none';
+    HappyFx.setMood(null); // 星星全灭
+    HappyFx.setIncome(0, 0); // 财宝堆回到空钱袋，已摆好时不会重复摆放
   }
 
   // 氛围特效：财宝堆随收入升级、星星密度、开场数钱、金笔打勾、进度里程碑
