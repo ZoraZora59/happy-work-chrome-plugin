@@ -131,6 +131,65 @@ final class HappyWorkTests: XCTestCase {
         XCTAssertFalse(session.isComplete(at: day(20)))
     }
 
+    func testWorkSessionSnapshot_capsOvertimeAtEndOfDay() {
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [],
+                                  isOvertimeActive: true)
+        let calendar = Calendar.current
+        let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: day(9)))!
+        let nextMorning = calendar.date(byAdding: .hour, value: 9, to: midnight)!
+
+        let snap = session.snapshot(at: nextMorning)
+        XCTAssertEqual(snap.overtimeElapsed, 6 * 3600, accuracy: 0.01)  // 18:00 → 24:00 封顶
+        XCTAssertTrue(snap.isFinished)
+        XCTAssertFalse(snap.isOvertime)
+        XCTAssertEqual(snap.phase, .finished)
+        XCTAssertTrue(session.isComplete(at: nextMorning))
+    }
+
+    func testWorkSessionSnapshot_overlappingBreaksAreNotDoubleCounted() {
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [
+                                      WorkBreak(name: "午休", startMinute: 12 * 60, endMinute: 13 * 60 + 30),
+                                      WorkBreak(name: "晚休", startMinute: 13 * 60, endMinute: 14 * 60)
+                                  ],
+                                  isOvertimeActive: false)
+
+        // 交叠期间已赚金额不能倒退。
+        let atOne = session.snapshot(at: day(13))
+        let atOneFifteen = session.snapshot(at: day(13, 15))
+        XCTAssertEqual(atOne.normalElapsed, 3 * 3600, accuracy: 0.01)
+        XCTAssertEqual(atOneFifteen.normalElapsed, 3 * 3600, accuracy: 0.01)
+        // 休息并集 12:00–14:00 共 2h → 全天 7h。
+        XCTAssertEqual(session.plannedPaidSeconds, 7 * 3600, accuracy: 0.01)
+
+        let store = ephemeralStore()
+        store.workStartMinute = 9 * 60
+        store.workEndMinute = 18 * 60
+        store.lunchBreakEnabled = true
+        store.lunchStartMinute = 12 * 60
+        store.lunchEndMinute = 13 * 60 + 30
+        store.dinnerBreakEnabled = true
+        store.dinnerStartMinute = 13 * 60
+        store.dinnerEndMinute = 14 * 60
+        XCTAssertEqual(store.normalWorkSeconds, 7 * 3600, accuracy: 0.01)
+    }
+
+    func testNormalWorkSeconds_matchesSessionWhenEndNotAfterStart() {
+        let store = ephemeralStore()
+        store.workStartMinute = 22 * 60
+        store.workEndMinute = 6 * 60
+        store.lunchBreakEnabled = false
+        store.dinnerBreakEnabled = false
+        XCTAssertEqual(store.normalWorkSeconds, store.makeSession(for: day(9)).plannedPaidSeconds, accuracy: 0.01)
+    }
+
     func testWorkSessionSnapshot_finishesWithoutOvertime() {
         let session = WorkSession(startDate: day(9),
                                   endDate: day(18),
@@ -286,6 +345,53 @@ final class HappyWorkTests: XCTestCase {
         store.workWeekPattern = .custom
         store.customRestWeekdays = []  // 全勤无休
         XCTAssertEqual(store.paidDays(in: june, calendar: cal), 30, accuracy: 0.001)
+    }
+
+    func testPaidDays_bigSmallWeekMatchesPerDayRestCheck() {
+        let cal = mondayCalendar
+        var sundayCalendar = Calendar(identifier: .gregorian)
+        sundayCalendar.firstWeekday = 1
+        for calendar in [cal, sundayCalendar] {
+            for big in [true, false] {
+                let store = ephemeralStore()
+                store.workWeekPattern = .bigSmallWeek
+                store.setBigSmallThisWeek(big, reference: date(2026, 6, 17), calendar: calendar)
+                for month in 1...12 {
+                    let reference = date(2026, month, 15)
+                    let days = calendar.range(of: .day, in: .month, for: reference)!.count
+                    let expected = (1...days).filter { !store.isRestDay(date(2026, month, $0), calendar: calendar) }.count
+                    XCTAssertEqual(store.paidDays(in: reference, calendar: calendar), Double(expected), accuracy: 0.001,
+                                   "month \(month) big \(big) firstWeekday \(calendar.firstWeekday)")
+                }
+            }
+        }
+    }
+
+    func testBigSmallAnchor_persistsOnFirstLaunch() {
+        let suite = "test.happywork.anchor." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        let store = SettingsStore(defaults: defaults)
+
+        let restored = SettingsStore(defaults: defaults)
+        XCTAssertEqual(restored.bigSmallAnchorDate.timeIntervalSince1970,
+                       store.bigSmallAnchorDate.timeIntervalSince1970, accuracy: 0.001)
+    }
+
+    func testActiveSession_discardsPreviousDay() {
+        let store = ephemeralStore()
+        let session = WorkSession(startDate: day(9),
+                                  endDate: day(18),
+                                  hourlyRate: 60,
+                                  overtimeMultiplier: 1.5,
+                                  breaks: [],
+                                  isOvertimeActive: true)
+        store.activeSession = session
+        let calendar = Calendar(identifier: .gregorian)
+
+        XCTAssertEqual(store.activeSession(for: day(20), calendar: calendar), session)
+        let nextDay = calendar.date(byAdding: .day, value: 1, to: day(9))!
+        XCTAssertNil(store.activeSession(for: nextDay, calendar: calendar))
+        XCTAssertNil(store.activeSession)
     }
 
     func testApplyPreset_setsWorkWeekPattern() {

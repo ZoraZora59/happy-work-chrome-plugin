@@ -12,6 +12,7 @@ final class LiveActivityManager: ObservableObject {
 
     private var activity: Activity<WorkAttributes>?
     private var lastPush: Date = .distantPast
+    private var lastPushedPhase: WorkAttributes.WorkPhase?
     private let snapshotFreshness: TimeInterval = 60
 
     /// 用户是否在系统设置里为本 App 打开了「实时活动」。
@@ -36,6 +37,7 @@ final class LiveActivityManager: ObservableObject {
         let content = makeContent(snapshot: snapshot, session: session)
         do {
             activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
+            lastPushedPhase = snapshot.phase
             isActive = true
         } catch {
             print("Live Activity 启动失败: \(error)")
@@ -43,11 +45,13 @@ final class LiveActivityManager: ObservableObject {
     }
 
     /// 更新金额/心情快照。前台调用时做节流（最快约 8 秒一次）；`force` 用于切后台前强制刷新。
+    /// 阶段切换（进午休、到点收工）不受节流：收工那一拍之后 Timer 就停了，被吞掉会一直停在旧阶段。
     func update(snapshot: EarningsSnapshot, session: WorkSession, force: Bool = false) {
         guard let activity else { return }
         let now = Date()
-        guard force || now.timeIntervalSince(lastPush) >= 8 else { return }
+        guard force || snapshot.phase != lastPushedPhase || now.timeIntervalSince(lastPush) >= 8 else { return }
         lastPush = now
+        lastPushedPhase = snapshot.phase
         let content = makeContent(snapshot: snapshot, session: session)
         Task { await activity.update(content) }
     }
@@ -57,6 +61,7 @@ final class LiveActivityManager: ObservableObject {
         guard let activity else { return }
         Task { await activity.end(nil, dismissalPolicy: .immediate) }
         self.activity = nil
+        lastPushedPhase = nil
         isActive = false
     }
 
@@ -68,17 +73,7 @@ final class LiveActivityManager: ObservableObject {
                                     mood: s.mood.rawValue,
                                     statusTitle: s.statusTitle,
                                     isOvertime: s.isOvertime,
-                                    phase: phase(for: s))
-    }
-
-    /// 由收入快照映射打工阶段。**判定优先级与 `EarningsSnapshot.statusTitle` 保持一致**，
-    /// 二者改动需同步，避免小人插画与状态文案对不上。
-    private func phase(for s: EarningsSnapshot) -> WorkAttributes.WorkPhase {
-        if s.isOvertime { return .overtime }
-        if s.isFinished { return .finished }
-        if s.isBeforeWork { return .beforeWork }
-        if s.isOnBreak { return .onBreak }
-        return .working
+                                    phase: s.phase)
     }
 
     private func makeContent(snapshot: EarningsSnapshot, session: WorkSession) -> ActivityContent<WorkAttributes.ContentState> {
@@ -89,20 +84,12 @@ final class LiveActivityManager: ObservableObject {
     private func breakSegments(for session: WorkSession, calendar: Calendar = .current) -> [WorkAttributes.BreakSegment] {
         let total = max(session.endDate.timeIntervalSince(session.startDate), 1)
         return session.breaks.compactMap { item in
-            let start = date(on: session.startDate, minuteOfDay: item.startMinute, calendar: calendar)
-            let end = date(on: session.startDate, minuteOfDay: item.endMinute, calendar: calendar)
+            let start = SettingsStore.date(on: session.startDate, minuteOfDay: item.startMinute, calendar: calendar)
+            let end = SettingsStore.date(on: session.startDate, minuteOfDay: item.endMinute, calendar: calendar)
             let startRatio = min(max(start.timeIntervalSince(session.startDate) / total, 0), 1)
             let endRatio = min(max(end.timeIntervalSince(session.startDate) / total, 0), 1)
             guard endRatio > startRatio else { return nil }
             return WorkAttributes.BreakSegment(startRatio: startRatio, endRatio: endRatio)
         }
-    }
-
-    private func date(on date: Date, minuteOfDay: Int, calendar: Calendar) -> Date {
-        var components = calendar.dateComponents([.year, .month, .day], from: date)
-        components.hour = minuteOfDay / 60
-        components.minute = minuteOfDay % 60
-        components.second = 0
-        return calendar.date(from: components) ?? date
     }
 }

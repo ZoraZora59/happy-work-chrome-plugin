@@ -20,7 +20,7 @@ struct WorkAttributes: ActivityAttributes {
     ///
     /// 与金额同理：阶段判定需要每秒重算，系统无法在锁屏上自行推进，因此它也是**快照**——
     /// 锁屏无推送时会冻结在上次 update 的阶段（例如进了午休但不会自动切到 `.onBreak`）。
-    /// 由 App 侧用 `EarningsSnapshot` 的布尔状态算出（见 `LiveActivityManager`），
+    /// 由 App 侧 `EarningsSnapshot.phase` 算出（状态文案也基于它），
     /// 避免在 Widget 里硬匹配 App-only 的中文 `statusTitle` 字面量。
     public enum WorkPhase: String, Codable, Hashable {
         case beforeWork   // 还没上班
@@ -62,7 +62,9 @@ struct WorkAttributes: ActivityAttributes {
         /// 是否已进入加班计薪。
         var isOvertime: Bool
         /// 当前打工阶段，用于切换状态小人插画。同为快照，锁屏无推送时冻结。
-        var phase: WorkPhase
+        /// 可选：旧版本发起、仍在运行的实时活动没有这个键，非可选会让 Widget 解码失败整块空白。
+        /// 渲染请用 `resolvedPhase`。
+        var phase: WorkPhase?
     }
 
     /// 有效时薪（由月薪、年终奖、计薪天数、有效工时折算），元/小时。
@@ -73,6 +75,13 @@ struct WorkAttributes: ActivityAttributes {
     var endDate: Date
     /// 休息段在日程轨道上的比例，用于锁屏展示午休/晚休断点。
     var breakSegments: [BreakSegment]
+}
+
+extension WorkAttributes.ContentState {
+    /// 缺省 `phase`（旧版快照）时按 `isOvertime` 兜底。
+    var resolvedPhase: WorkAttributes.WorkPhase {
+        phase ?? (isOvertime ? .overtime : .working)
+    }
 }
 
 extension WorkAttributes {

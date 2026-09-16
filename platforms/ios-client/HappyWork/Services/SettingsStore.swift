@@ -166,7 +166,11 @@ final class SettingsStore: ObservableObject {
         if let anchorInterval = defaults.object(forKey: Key.bigSmallAnchorDate) as? Double {
             self.bigSmallAnchorDate = Date(timeIntervalSince1970: anchorInterval)
         } else {
-            self.bigSmallAnchorDate = Date()
+            // 首次没有锚点时必须落盘（init 里 didSet 不触发）：否则每次冷启动都以「启动当周」为基准，
+            // 大小周永远不会轮换。
+            let anchor = Date()
+            self.bigSmallAnchorDate = anchor
+            defaults.set(anchor.timeIntervalSince1970, forKey: Key.bigSmallAnchorDate)
         }
         self.workStartMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.workStartMinute) as? Int ?? 9 * 60)
         self.workEndMinute = Self.normalizedMinuteOfDay(defaults.object(forKey: Key.workEndMinute) as? Int ?? 18 * 60)
@@ -199,11 +203,11 @@ final class SettingsStore: ObservableObject {
 
     var normalWorkSeconds: TimeInterval {
         let start = clampedMinute(workStartMinute)
-        let end = clampedMinute(workEndMinute)
-        guard end > start else { return 1 }
+        // 与 makeSession 相同的修正：下班不晚于上班时按 1 分钟会话算，保证时薪与会话计薪口径一致。
+        let end = max(clampedMinute(workEndMinute), start + 1)
         let gross = TimeInterval((end - start) * 60)
-        let breakSeconds = breaks.reduce(0.0) { total, item in
-            total + TimeInterval(overlapMinutes(start...end, item.startMinute...item.endMinute) * 60)
+        let breakSeconds = WorkBreak.mergedMinuteRanges(breaks).reduce(0.0) { total, range in
+            total + TimeInterval(overlapMinutes(start...end, range) * 60)
         }
         return max(gross - breakSeconds, 1)
     }
@@ -249,6 +253,16 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    /// 只恢复当天开始的进行中会话；跨天后清理，避免把昨天（尤其是加班中）的会话接着算到今天。
+    func activeSession(for date: Date = Date(), calendar: Calendar = .current) -> WorkSession? {
+        guard let session = activeSession else { return nil }
+        guard calendar.isDate(session.startDate, inSameDayAs: date) else {
+            activeSession = nil
+            return nil
+        }
+        return session
+    }
+
     /// 当天最近一次手动停止的会话，用于 App 重启后继续展示最终收入。
     var lastStoppedWork: StoppedWorkRecord? {
         get {
@@ -277,14 +291,18 @@ final class SettingsStore: ObservableObject {
     /// 给定日期是不是休息日（默认今天）。
     func isRestDay(_ date: Date = Date(), calendar: Calendar = .current) -> Bool {
         let weekday = calendar.component(.weekday, from: date)  // 1=周日 … 7=周六
+        return isRestWeekday(weekday, isBigWeek: self.isBigWeek(for: date, calendar: calendar))
+    }
+
+    /// 按星期几判定休息日；大小周只在周六才需要知道大/小周，其余情况不触发 Calendar 计算。
+    private func isRestWeekday(_ weekday: Int, isBigWeek: @autoclosure () -> Bool) -> Bool {
         switch workWeekPattern {
         case .doubleRest:
             return weekday == 1 || weekday == 7
         case .singleRest:
             return weekday == 1
         case .bigSmallWeek:
-            return isBigWeek(for: date, calendar: calendar) ? (weekday == 1)
-                                                            : (weekday == 1 || weekday == 7)
+            return weekday == 1 || (weekday == 7 && !isBigWeek())  // 大周上六休一，小周双休
         case .custom:
             return customRestWeekdays.contains(weekday)
         }
@@ -297,9 +315,12 @@ final class SettingsStore: ObservableObject {
             return bigSmallBigThisWeek
         }
         let days = calendar.dateComponents([.day], from: anchorStart, to: targetStart).day ?? 0
-        let weeks = Int((Double(days) / 7.0).rounded())
-        let isEven = ((weeks % 2) + 2) % 2 == 0
-        return isEven ? bigSmallBigThisWeek : !bigSmallBigThisWeek
+        return isBigWeek(weeksFromAnchor: Int((Double(days) / 7.0).rounded()))
+    }
+
+    /// 与锚点周相差偶数周则与锚点同型（Swift 的 % 对负数返回非正余数，偶数判定不受影响）。
+    private func isBigWeek(weeksFromAnchor weeks: Int) -> Bool {
+        weeks % 2 == 0 ? bigSmallBigThisWeek : !bigSmallBigThisWeek
     }
 
     /// 把「本周」标记为大周或小周，并据此重置轮换锚点。
@@ -325,10 +346,23 @@ final class SettingsStore: ObservableObject {
               let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else {
             return 21.75
         }
+        // 首页每秒重绘都会读到时薪，这里不能逐日走 Calendar：1 号的星期几和大小周基准各算一次，
+        // 之后按偏移做整数推算。
+        let firstWeekday = calendar.component(.weekday, from: monthStart)
+        let daysFromAnchorWeek: Int? = workWeekPattern == .bigSmallWeek
+            ? calendar.dateInterval(of: .weekOfYear, for: bigSmallAnchorDate)
+                .flatMap { calendar.dateComponents([.day], from: $0.start, to: monthStart).day }
+            : nil
         var workdays = 0
         for offset in 0..<dayRange.count {
-            guard let day = calendar.date(byAdding: .day, value: offset, to: monthStart) else { continue }
-            if !isRestDay(day, calendar: calendar) { workdays += 1 }
+            let weekday = (firstWeekday - 1 + offset) % 7 + 1
+            let rest = isRestWeekday(weekday, isBigWeek: {
+                guard let daysFromAnchorWeek else { return self.bigSmallBigThisWeek }
+                let daysIntoWeek = (weekday - calendar.firstWeekday + 7) % 7
+                let weeks = Int((Double(daysFromAnchorWeek + offset - daysIntoWeek) / 7.0).rounded())
+                return self.isBigWeek(weeksFromAnchor: weeks)
+            }())
+            if !rest { workdays += 1 }
         }
         return Double(max(workdays, 1))
     }
@@ -382,14 +416,18 @@ final class SettingsStore: ObservableObject {
     /// 以当前劳动规则生成今天的会话；从配置的上班时间开始，而不是从打开 App 的时刻开始。
     func makeSession(for date: Date = Date(), calendar: Calendar = .current) -> WorkSession {
         let start = Self.date(on: date, minuteOfDay: clampedMinute(workStartMinute), calendar: calendar)
-        let endMinute = max(clampedMinute(workEndMinute), clampedMinute(workStartMinute) + 1)
-        let end = Self.date(on: date, minuteOfDay: endMinute, calendar: calendar)
         return WorkSession(startDate: start,
-                           endDate: end,
+                           endDate: workEndDate(on: date, calendar: calendar),
                            hourlyRate: effectiveHourlyRate,
                            overtimeMultiplier: afterWorkOvertimeMultiplier,
                            breaks: breaks,
                            isOvertimeActive: false)
+    }
+
+    /// 按当前作息算出的下班时刻。只需要下班时间时用它，别为此构造整个会话（会顺带算一遍时薪）。
+    func workEndDate(on date: Date = Date(), calendar: Calendar = .current) -> Date {
+        let endMinute = max(clampedMinute(workEndMinute), clampedMinute(workStartMinute) + 1)
+        return Self.date(on: date, minuteOfDay: endMinute, calendar: calendar)
     }
 
     private func normalizeAndStoreMinute(_ keyPath: ReferenceWritableKeyPath<SettingsStore, Int>, key: String) {

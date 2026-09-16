@@ -7,6 +7,22 @@ struct WorkBreak: Codable, Equatable, Identifiable {
     var endMinute: Int
 }
 
+extension WorkBreak {
+    /// 把休息段合并成互不重叠的分钟区间（按开始时间排序）。午休/晚休有交叠时若逐段相减，
+    /// 交叠部分会被扣两次，已赚金额会在交叠期倒退。
+    static func mergedMinuteRanges(_ breaks: [WorkBreak]) -> [ClosedRange<Int>] {
+        var merged: [ClosedRange<Int>] = []
+        for item in breaks.sorted(by: { $0.startMinute < $1.startMinute }) where item.endMinute > item.startMinute {
+            if let last = merged.last, item.startMinute <= last.upperBound {
+                merged[merged.count - 1] = last.lowerBound...max(last.upperBound, item.endMinute)
+            } else {
+                merged.append(item.startMinute...item.endMinute)
+            }
+        }
+        return merged
+    }
+}
+
 /// 一次打工时段。`startDate...endDate` 既驱动 App 内的每秒计算，也作为 Live Activity
 /// 的属性传给 Widget。App 内的收入计算会扣除休息时间；锁屏计时视图展示的是日程进度。
 struct WorkSession: Codable, Equatable {
@@ -24,8 +40,17 @@ struct WorkSession: Codable, Equatable {
         paidSeconds(from: startDate, to: endDate)
     }
 
+    /// 会话所在自然日的结束时刻（次日 0 点）。加班最多算到这里：忘记停止时不会跨天无限累计，
+    /// Timer 也能按时停表。
+    var dayEndDate: Date {
+        let calendar = Calendar.current
+        return calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: startDate))
+            ?? startDate.addingTimeInterval(24 * 3600)
+    }
+
     func isComplete(at now: Date = Date()) -> Bool {
-        now >= endDate && !isOvertimeActive
+        guard now >= endDate else { return false }
+        return !isOvertimeActive || now >= dayEndDate
     }
 
     func withOvertimeActive(_ active: Bool) -> WorkSession {
@@ -38,23 +63,26 @@ struct WorkSession: Codable, Equatable {
     func snapshot(at now: Date = Date()) -> EarningsSnapshot {
         let normalEnd = min(maxDate(now, startDate), endDate)
         let normalSeconds = paidSeconds(from: startDate, to: normalEnd)
-        let overtimeSeconds = isOvertimeActive && now > endDate ? paidSeconds(from: endDate, to: now) : 0
+        let dayEnd = dayEndDate
+        let overtimeEnd = min(now, dayEnd)
+        let overtimeSeconds = isOvertimeActive && overtimeEnd > endDate ? paidSeconds(from: endDate, to: overtimeEnd) : 0
+        let planned = plannedPaidSeconds  // 会话内恒定，只算一次
         let elapsed = normalSeconds + overtimeSeconds
         let normalEarned = normalSeconds / 3600.0 * hourlyRate
         let overtimeEarned = overtimeSeconds / 3600.0 * hourlyRate * overtimeMultiplier
-        let progress = plannedPaidSeconds > 0 ? normalSeconds / plannedPaidSeconds : 0
+        let progress = planned > 0 ? normalSeconds / planned : 0
         let cappedProgress = min(max(progress, 0), 1)
         let isBeforeWork = now < startDate
         let isOnBreak = containsBreak(at: now)
-        let isFinished = now >= endDate && !isOvertimeActive
-        let isOvertime = isOvertimeActive && now >= endDate
+        let isFinished = now >= endDate && (!isOvertimeActive || now >= dayEnd)
+        let isOvertime = isOvertimeActive && now >= endDate && now < dayEnd
         return EarningsSnapshot(
             elapsed: elapsed,
             normalElapsed: normalSeconds,
             overtimeElapsed: overtimeSeconds,
-            plannedElapsed: plannedPaidSeconds,
+            plannedElapsed: planned,
             earned: normalEarned + overtimeEarned,
-            targetEarned: plannedPaidSeconds / 3600.0 * hourlyRate,
+            targetEarned: planned / 3600.0 * hourlyRate,
             progress: cappedProgress,
             mood: .forProgress(cappedProgress),
             isBeforeWork: isBeforeWork,
@@ -67,9 +95,9 @@ struct WorkSession: Codable, Equatable {
     private func paidSeconds(from start: Date, to end: Date) -> TimeInterval {
         guard end > start else { return 0 }
         var seconds = end.timeIntervalSince(start)
-        for item in breaks {
-            let breakStart = date(on: start, minuteOfDay: item.startMinute)
-            let breakEnd = date(on: start, minuteOfDay: item.endMinute)
+        for range in WorkBreak.mergedMinuteRanges(breaks) {
+            let breakStart = date(on: start, minuteOfDay: range.lowerBound)
+            let breakEnd = date(on: start, minuteOfDay: range.upperBound)
             seconds -= overlapSeconds(start...end, breakStart...breakEnd)
         }
         return max(seconds, 0)

@@ -65,12 +65,15 @@ final class EarningsService: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
+        timer?.tolerance = 0.1  // 允许系统合并唤醒，省电；展示精度不受影响
     }
 
     private func refresh() {
         guard let s = session else { snapshot = .zero; return }
         let now = Date()
-        snapshot = s.snapshot(at: now)
+        let next = s.snapshot(at: now)
+        // 午休、未到上班点时快照每秒都一样：跳过赋值，避免整页重绘和锁屏推送空转。
+        if next != snapshot { snapshot = next }
         if s.isComplete(at: now) { timer?.invalidate(); timer = nil }  // 收工后停表，保留最终快照
     }
 }

@@ -16,16 +16,20 @@ struct ContentView: View {
         ZStack {
             theme.background.ignoresSafeArea()
             ScrollView {
-                VStack(spacing: 18) {
-                    header
-                    cockpitPanel
-                    scheduleSummary
-                    incomeSummary
-                    liveActivityPreview
+                // 倒计时、「已到下班时间」、日期都读 Date()：未开工或休息中快照不变时没有别的重绘来源，
+                // 按分钟刷新一次即可（倒计时本身就是分钟精度）。
+                TimelineView(.everyMinute) { _ in
+                    VStack(spacing: 18) {
+                        header
+                        cockpitPanel
+                        scheduleSummary
+                        incomeSummary
+                        liveActivityPreview
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
+                    .padding(.bottom, 30)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
-                .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
         }
@@ -46,8 +50,9 @@ struct ContentView: View {
             }
         }
         .onChange(of: scenePhase) { phase in
+            // 现算快照：刚从挂起恢复时 earnings.snapshot 还是挂起前的旧值，却会被标成「截至现在」。
             if (phase == .active || phase == .background), let session = earnings.session {
-                liveActivity.update(snapshot: earnings.snapshot, session: session, force: true)
+                liveActivity.update(snapshot: session.snapshot(), session: session, force: true)
             }
         }
     }
@@ -364,7 +369,7 @@ struct ContentView: View {
     private var countdownTitle: String {
         if earnings.hasStoppedSession { return "有效计薪" }
         if isRestDayToday { return "今日" }
-        if earnings.session == nil && Date() >= settings.makeSession().endDate { return "已到下班时间" }
+        if earnings.session == nil && Date() >= settings.workEndDate() { return "已到下班时间" }
         if earnings.session == nil { return "距下班还有" }
         if earnings.snapshot.isOvertime { return "已加班" }
         if earnings.snapshot.isFinished { return "已到下班时间" }
@@ -374,20 +379,20 @@ struct ContentView: View {
     private var countdownValue: String {
         if earnings.hasStoppedSession { return earnings.snapshot.elapsedString }
         if isRestDayToday { return "休息" }
-        let session = earnings.session ?? settings.makeSession()
-        if earnings.session == nil && Date() >= session.endDate { return "今天" }
+        let endDate = earnings.session?.endDate ?? settings.workEndDate()
+        if earnings.session == nil && Date() >= endDate { return "今天" }
         if earnings.snapshot.isFinished { return "今天" }
         if earnings.snapshot.isOvertime {
             return WorkDurationFormatter.readableCountdown(earnings.snapshot.overtimeElapsed)
         }
-        let remaining = max(session.endDate.timeIntervalSince(Date()), 0)
+        let remaining = max(endDate.timeIntervalSince(Date()), 0)
         return WorkDurationFormatter.readableCountdown(remaining)
     }
 
     private var lockCountdownText: String {
         if earnings.hasStoppedSession { return "本次计薪已结束" }
         if isRestDayToday { return "今天休息" }
-        if earnings.session == nil && Date() >= settings.makeSession().endDate {
+        if earnings.session == nil && Date() >= settings.workEndDate() {
             return "今天已到下班点"
         }
         if earnings.snapshot.isFinished { return "今天已到下班点" }

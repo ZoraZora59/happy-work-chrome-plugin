@@ -16,9 +16,10 @@ struct HappyWorkLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 8) {
-                        PhaseAvatar(phase: context.state.phase, size: 34)
+                        PhaseAvatar(phase: context.state.resolvedPhase, size: 34)
+                            .opacity(context.isStale ? 0.4 : 1)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("截至 \(context.state.asOf, format: .dateTime.hour().minute())")
+                            Text("\(context.isStale ? "已过期 · " : "")截至 \(context.state.asOf, format: .dateTime.hour().minute())")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                             Text("¥" + money(context.state.earned))
@@ -54,9 +55,9 @@ struct HappyWorkLiveActivity: Widget {
                     }
                 }
             } compactLeading: {
-                Image(systemName: context.state.phase.symbolName)
+                Image(systemName: context.state.resolvedPhase.symbolName)
                     .font(.caption)
-                    .foregroundStyle(context.state.phase == .overtime ? WidgetPalette.overtime : WidgetPalette.accent)
+                    .foregroundStyle(context.state.resolvedPhase == .overtime ? WidgetPalette.overtime : WidgetPalette.accent)
             } compactTrailing: {
                 Text(timerInterval: context.attributes.timerRange, countsDown: true)
                     .font(.caption2.bold())
@@ -77,7 +78,9 @@ private struct LockScreenView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                PhaseAvatar(phase: context.state.phase)
+                // 过了 staleDate 阶段可能已变（进午休/下班），弱化小人并标注过期，避免误导。
+                PhaseAvatar(phase: context.state.resolvedPhase)
+                    .opacity(context.isStale ? 0.4 : 1)
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
@@ -106,7 +109,7 @@ private struct LockScreenView: View {
                     Text("¥" + String(format: "%.0f", context.state.earned))
                         .font(.title2.bold())
                         .monospacedDigit()
-                    Text("截至 \(context.state.asOf, format: .dateTime.hour().minute())")
+                    Text("\(context.isStale ? "已过期 · " : "")截至 \(context.state.asOf, format: .dateTime.hour().minute())")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

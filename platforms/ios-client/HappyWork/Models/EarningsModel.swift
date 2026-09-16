@@ -68,20 +68,33 @@ struct EarningsSnapshot: Equatable {
         durationString(overtimeElapsed)
     }
 
+    /// 打工阶段——状态文案与锁屏「状态小人」共用的唯一判定来源，优先级只在这里维护。
+    var phase: WorkAttributes.WorkPhase {
+        if isOvertime { return .overtime }
+        if isFinished { return .finished }
+        if isBeforeWork { return .beforeWork }
+        if isOnBreak { return .onBreak }
+        return .working
+    }
+
     var statusTitle: String {
-        if isOvertime { return "加班中" }
-        if isFinished { return "今日已收工" }
-        if isBeforeWork { return "还没上班" }
-        if isOnBreak { return "休息中" }
-        return "计薪中"
+        switch phase {
+        case .overtime: return "加班中"
+        case .finished: return "今日已收工"
+        case .beforeWork: return "还没上班"
+        case .onBreak: return "休息中"
+        case .working: return "计薪中"
+        }
     }
 
     var statusDetail: String {
-        if isOvertime { return "加班费已按倍数计算" }
-        if isFinished { return "今天的正常工时已完成" }
-        if isBeforeWork { return "到点后自动按作息计算" }
-        if isOnBreak { return "休息时间不计薪" }
-        return mood.rawValue
+        switch phase {
+        case .overtime: return "加班费已按倍数计算"
+        case .finished: return "今天的正常工时已完成"
+        case .beforeWork: return "到点后自动按作息计算"
+        case .onBreak: return "休息时间不计薪"
+        case .working: return mood.rawValue
+        }
     }
 
     private func durationString(_ value: TimeInterval) -> String {
