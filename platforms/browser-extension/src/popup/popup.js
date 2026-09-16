@@ -89,7 +89,8 @@ document.addEventListener('DOMContentLoaded', function () {
       workState = {
         date: today,
         baseIncome: 0,
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
+        overtimeActive: false // 下班后加班状态，只在当天有效
       };
       // 立即保存一次初始状态
       await chrome.storage.local.set({ workState });
@@ -103,6 +104,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (workState) {
         displayIncome = workState.baseIncome;
         lastUpdateTime = workState.lastUpdateTime;
+        // 恢复加班按钮状态（旧版状态没有该字段，按未加班处理）
+        updateOvertimeButton(workState.overtimeActive === true);
     }
 
     startUpdateLoop();
@@ -598,7 +601,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     const todayWorkInfo = getTodayWorkType(workDays, overtimeSettings);
-    const isOvertimeActive = overtimeBtn.classList.contains('active');
+    // 加班状态以 workState 为准，且只在开启了下班后加班的工作日生效（避免关掉设置后按钮隐藏、状态却关不掉）
+    const isOvertimeActive = workState.overtimeActive === true && todayWorkInfo.afterWorkMultiplier !== undefined;
     const isCurrentlyWorkingCheck = isCurrentlyInWorkTime(workStart, workEnd, breaks, isOvertimeActive);
 
     if (todayWorkInfo.type === 'off' && !isCurrentlyWorkingCheck) {
@@ -624,7 +628,10 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // 获取当前已工作秒数
     const { normalSeconds, afterWorkSeconds } = getWorkedSeconds(workStart, workEnd, breaks, isOvertimeActive);
-    
+
+    // 更新加班按钮显示状态（工作日、已下班、开启了下班后加班时才显示）
+    updateOvertimeButtonVisibility(todayWorkInfo, normalSeconds, dailyWorkSeconds);
+
     // 计算准确的基础收入
     let currentBaseIncome = normalSeconds * incomePerSecond * todayWorkInfo.multiplier;
     if (afterWorkSeconds > 0 && todayWorkInfo.afterWorkMultiplier) {
@@ -913,6 +920,24 @@ document.addEventListener('DOMContentLoaded', function () {
       overtimeBtn.textContent = '😭我在加班';
       overtimeBtn.classList.remove('active');
     }
+  }
+
+  // 加班按钮点击事件：切换下班后加班状态，并立即保存（只在当天有效）
+  if (overtimeBtn) {
+    overtimeBtn.addEventListener('click', async function () {
+      if (!workState) return;
+
+      workState.overtimeActive = !workState.overtimeActive;
+      updateOvertimeButton(workState.overtimeActive);
+
+      // 不等 5 秒节流，立即保存，避免马上关闭弹窗后状态丢失
+      await chrome.storage.local.set({ workState });
+      await chrome.storage.sync.set({ workState });
+      lastSaveTime = Date.now();
+
+      // 立即更新收入显示，让加班费和心情状态马上生效
+      updateIncomeEnhanced();
+    });
   }
 
   // 初始化
